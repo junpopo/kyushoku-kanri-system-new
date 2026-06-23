@@ -104,10 +104,10 @@ public sealed class PersonEditForm : Form
         _type.DropDownStyle = ComboBoxStyle.DropDownList;
         _type.Items.AddRange(TypeOptions.Select(option => option.Label).ToArray());
 
-        AddRow(panel, 0, "学年", _grade);
-        AddRow(panel, 1, "組", _className);
-        AddRow(panel, 2, "番号", _studentNumber);
-        AddRow(panel, 3, "区分", _type);
+        AddRow(panel, 0, "区分", _type);
+        AddRow(panel, 1, "学年", _grade);
+        AddRow(panel, 2, "組", _className);
+        AddRow(panel, 3, "番号", _studentNumber);
         AddRow(panel, 4, "姓", _lastName);
         AddRow(panel, 5, "名", _firstName);
 
