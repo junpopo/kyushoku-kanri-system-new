@@ -20,15 +20,15 @@ public sealed class PersonEditForm : Form
     private readonly TextBox _firstName = new();
     private readonly ComboBox _deliveryPlace1 = new();
     private readonly ComboBox _deliveryPlace2 = new();
-    private readonly CheckBox _eatMonday = new() { Text = "月" };
-    private readonly CheckBox _eatTuesday = new() { Text = "火" };
-    private readonly CheckBox _eatWednesday = new() { Text = "水" };
-    private readonly CheckBox _eatThursday = new() { Text = "木" };
-    private readonly CheckBox _eatFriday = new() { Text = "金" };
-    private readonly CheckBox _hasMilk = new() { Text = "牛乳あり" };
-    private readonly CheckBox _hasAllergySupport = new() { Text = "アレルギー対応あり" };
+    private readonly CheckBox _eatMonday = new() { Text = "月", AutoSize = true };
+    private readonly CheckBox _eatTuesday = new() { Text = "火", AutoSize = true };
+    private readonly CheckBox _eatWednesday = new() { Text = "水", AutoSize = true };
+    private readonly CheckBox _eatThursday = new() { Text = "木", AutoSize = true };
+    private readonly CheckBox _eatFriday = new() { Text = "金", AutoSize = true };
+    private readonly CheckBox _hasMilk = new() { Text = "牛乳あり", AutoSize = true };
+    private readonly CheckBox _hasAllergySupport = new() { Text = "アレルギー対応あり", AutoSize = true };
     private readonly DateTimePicker _activeFrom = new();
-    private readonly CheckBox _hasActiveTo = new();
+    private readonly CheckBox _hasActiveTo = new() { Text = "設定する", AutoSize = true };
     private readonly DateTimePicker _activeTo = new();
     private readonly TextBox _memo = new();
     private readonly IReadOnlyCollection<string> _deliveryPlaces;
@@ -63,12 +63,11 @@ public sealed class PersonEditForm : Form
         };
 
         Text = person is null ? "1人追加" : "編集";
-        Width = 500;
-        Height = 700;
+        Width = 560;
+        Height = 720;
+        MinimumSize = new Size(520, 640);
         StartPosition = FormStartPosition.CenterParent;
-        FormBorderStyle = FormBorderStyle.FixedDialog;
-        MaximizeBox = false;
-        MinimizeBox = false;
+        FormBorderStyle = FormBorderStyle.Sizable;
 
         Controls.Add(CreateLayout());
         LoadPerson();
@@ -76,24 +75,34 @@ public sealed class PersonEditForm : Form
 
     private Control CreateLayout()
     {
-        var panel = new TableLayoutPanel
+        var root = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
-            ColumnCount = 2,
-            RowCount = 15,
+            ColumnCount = 1,
+            RowCount = 5,
             Padding = new Padding(16)
         };
-        panel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 110));
-        panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+        root.Controls.Add(CreateBasicSection(), 0, 0);
+        root.Controls.Add(CreateMealSection(), 0, 1);
+        root.Controls.Add(CreateDateSection(), 0, 2);
+        root.Controls.Add(CreateMemoSection(), 0, 3);
+        root.Controls.Add(CreateButtonBar(), 0, 4);
+        return root;
+    }
+
+    private GroupBox CreateBasicSection()
+    {
+        var group = CreateGroup("基本情報");
+        var panel = CreateGrid(3);
 
         _type.DropDownStyle = ComboBoxStyle.DropDownList;
         _type.Items.AddRange(TypeOptions.Select(option => option.Label).ToArray());
-        ConfigureDeliveryPlaceCombo(_deliveryPlace1, _deliveryPlaces);
-        ConfigureDeliveryPlaceCombo(_deliveryPlace2, _deliveryPlaces);
-        _activeFrom.Format = DateTimePickerFormat.Short;
-        _activeTo.Format = DateTimePickerFormat.Short;
-        _activeTo.Enabled = false;
-        _hasActiveTo.CheckedChanged += (_, _) => _activeTo.Enabled = _hasActiveTo.Checked;
 
         AddRow(panel, 0, "学年", _grade);
         AddRow(panel, 1, "組", _className);
@@ -101,23 +110,67 @@ public sealed class PersonEditForm : Form
         AddRow(panel, 3, "区分", _type);
         AddRow(panel, 4, "姓", _lastName);
         AddRow(panel, 5, "名", _firstName);
-        AddRow(panel, 6, "配膳場所1", _deliveryPlace1);
-        AddRow(panel, 7, "配膳場所2", _deliveryPlace2);
-        AddRow(panel, 8, "喫食日", CreateWeekdayPanel());
-        AddRow(panel, 9, "牛乳", _hasMilk);
-        AddRow(panel, 10, "アレルギー", _hasAllergySupport);
-        AddRow(panel, 11, "開始日", _activeFrom);
-        AddRow(panel, 12, "終了日", CreateEndDatePanel());
-        AddRow(panel, 13, "備考", _memo);
 
+        group.Controls.Add(panel);
+        return group;
+    }
+
+    private GroupBox CreateMealSection()
+    {
+        var group = CreateGroup("配膳・食事設定");
+        var panel = CreateGrid(3);
+
+        ConfigureDeliveryPlaceCombo(_deliveryPlace1, _deliveryPlaces);
+        ConfigureDeliveryPlaceCombo(_deliveryPlace2, _deliveryPlaces);
+
+        AddRow(panel, 0, "配膳場所1", _deliveryPlace1);
+        AddRow(panel, 1, "配膳場所2", _deliveryPlace2);
+        AddRow(panel, 2, "喫食日", CreateWeekdayPanel());
+        AddRow(panel, 3, "牛乳", _hasMilk);
+        AddRow(panel, 4, "アレルギー", _hasAllergySupport);
+
+        group.Controls.Add(panel);
+        return group;
+    }
+
+    private GroupBox CreateDateSection()
+    {
+        var group = CreateGroup("期間");
+        var panel = CreateGrid(2);
+
+        _activeFrom.Format = DateTimePickerFormat.Short;
+        _activeTo.Format = DateTimePickerFormat.Short;
+        _activeTo.Enabled = false;
+        _hasActiveTo.CheckedChanged += (_, _) => _activeTo.Enabled = _hasActiveTo.Checked;
+
+        AddRow(panel, 0, "開始日", _activeFrom);
+        AddRow(panel, 1, "終了日", CreateEndDatePanel());
+
+        group.Controls.Add(panel);
+        return group;
+    }
+
+    private GroupBox CreateMemoSection()
+    {
+        var group = CreateGroup("備考");
+        _memo.Dock = DockStyle.Fill;
+        _memo.Multiline = true;
+        _memo.ScrollBars = ScrollBars.Vertical;
+        group.Controls.Add(_memo);
+        return group;
+    }
+
+    private FlowLayoutPanel CreateButtonBar()
+    {
         var buttons = new FlowLayoutPanel
         {
             FlowDirection = FlowDirection.RightToLeft,
             Dock = DockStyle.Fill,
-            AutoSize = true
+            AutoSize = true,
+            Padding = new Padding(0, 12, 0, 0)
         };
-        var ok = new Button { Text = "OK", DialogResult = DialogResult.OK, AutoSize = true };
-        var cancel = new Button { Text = "キャンセル", DialogResult = DialogResult.Cancel, AutoSize = true };
+        var ok = new Button { Text = "OK", DialogResult = DialogResult.OK, AutoSize = true, Padding = new Padding(16, 6, 16, 6) };
+        var cancel = new Button { Text = "キャンセル", DialogResult = DialogResult.Cancel, AutoSize = true, Padding = new Padding(16, 6, 16, 6) };
         ok.Click += (_, _) =>
         {
             if (!Apply())
@@ -127,11 +180,35 @@ public sealed class PersonEditForm : Form
         };
         buttons.Controls.Add(ok);
         buttons.Controls.Add(cancel);
-        panel.Controls.Add(buttons, 0, 14);
-        panel.SetColumnSpan(buttons, 2);
-
         AcceptButton = ok;
         CancelButton = cancel;
+        return buttons;
+    }
+
+    private static GroupBox CreateGroup(string text)
+    {
+        return new GroupBox
+        {
+            Text = text,
+            Dock = DockStyle.Fill,
+            AutoSize = true,
+            Padding = new Padding(12),
+            Margin = new Padding(0, 0, 0, 12)
+        };
+    }
+
+    private static TableLayoutPanel CreateGrid(int rowCount)
+    {
+        var panel = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            AutoSize = true,
+            ColumnCount = 2,
+            RowCount = rowCount,
+            Padding = new Padding(0, 4, 0, 0)
+        };
+        panel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 110));
+        panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         return panel;
     }
 
@@ -142,12 +219,6 @@ public sealed class PersonEditForm : Form
         return panel;
     }
 
-    private static void ConfigureDeliveryPlaceCombo(ComboBox comboBox, IReadOnlyCollection<string> deliveryPlaces)
-    {
-        comboBox.DropDownStyle = ComboBoxStyle.DropDownList;
-        comboBox.Items.AddRange(deliveryPlaces.OrderBy(place => place).Cast<object>().ToArray());
-    }
-
     private Control CreateEndDatePanel()
     {
         var panel = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, WrapContents = false };
@@ -156,11 +227,18 @@ public sealed class PersonEditForm : Form
         return panel;
     }
 
+    private static void ConfigureDeliveryPlaceCombo(ComboBox comboBox, IReadOnlyCollection<string> deliveryPlaces)
+    {
+        comboBox.DropDownStyle = ComboBoxStyle.DropDownList;
+        comboBox.Items.AddRange(deliveryPlaces.OrderBy(place => place).Cast<object>().ToArray());
+    }
+
     private static void AddRow(TableLayoutPanel panel, int row, string labelText, Control input)
     {
         panel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        panel.Controls.Add(new Label { Text = labelText, AutoSize = true, Padding = new Padding(0, 7, 0, 0) }, 0, row);
+        panel.Controls.Add(new Label { Text = labelText, AutoSize = true, Padding = new Padding(0, 8, 0, 0) }, 0, row);
         input.Dock = DockStyle.Fill;
+        input.Margin = new Padding(0, 2, 0, 6);
         panel.Controls.Add(input, 1, row);
     }
 
@@ -212,7 +290,7 @@ public sealed class PersonEditForm : Form
 
         if (string.IsNullOrWhiteSpace(_deliveryPlace1.Text) || string.IsNullOrWhiteSpace(_deliveryPlace2.Text))
         {
-            MessageBox.Show("配膳場所1と配膳場所2を入力してください。");
+            MessageBox.Show("配膳場所1と配膳場所2を選択してください。");
             return false;
         }
 
