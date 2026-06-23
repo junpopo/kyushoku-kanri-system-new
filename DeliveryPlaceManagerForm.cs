@@ -153,9 +153,10 @@ public sealed class DeliveryPlaceManagerForm : Form
                 person.DeliveryPlace1 = newValue;
             }
 
-            if (person.DeliveryPlace2.Equals(oldValue, StringComparison.CurrentCultureIgnoreCase))
+            foreach (var history in person.DeliveryPlaceHistories.Where(history =>
+                history.DeliveryPlace.Equals(oldValue, StringComparison.CurrentCultureIgnoreCase)))
             {
-                person.DeliveryPlace2 = newValue;
+                history.DeliveryPlace = newValue;
             }
         }
 
@@ -172,7 +173,7 @@ public sealed class DeliveryPlaceManagerForm : Form
 
         var usedCount = _people.Count(person =>
             person.DeliveryPlace1.Equals(selected, StringComparison.CurrentCultureIgnoreCase) ||
-            person.DeliveryPlace2.Equals(selected, StringComparison.CurrentCultureIgnoreCase));
+            person.DeliveryPlaceHistories.Any(history => history.DeliveryPlace.Equals(selected, StringComparison.CurrentCultureIgnoreCase)));
 
         var message = usedCount > 0
             ? $"{selected} は {usedCount}人に設定されています。削除すると、その人の配膳場所は空になります。削除しますか？"
@@ -190,10 +191,8 @@ public sealed class DeliveryPlaceManagerForm : Form
                 person.DeliveryPlace1 = "";
             }
 
-            if (person.DeliveryPlace2.Equals(selected, StringComparison.CurrentCultureIgnoreCase))
-            {
-                person.DeliveryPlace2 = "";
-            }
+            person.DeliveryPlaceHistories.RemoveAll(history =>
+                history.DeliveryPlace.Equals(selected, StringComparison.CurrentCultureIgnoreCase));
         }
 
         _placeName.Clear();

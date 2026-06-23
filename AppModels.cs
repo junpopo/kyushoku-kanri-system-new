@@ -47,6 +47,7 @@ public sealed class Person
     public string Name { get; set; } = "";
     public string DeliveryPlace1 { get; set; } = "";
     public string DeliveryPlace2 { get; set; } = "";
+    public List<DeliveryPlaceHistory> DeliveryPlaceHistories { get; set; } = [];
     public bool EatMonday { get; set; } = true;
     public bool EatTuesday { get; set; } = true;
     public bool EatWednesday { get; set; } = true;
@@ -90,6 +91,24 @@ public sealed class Person
             _ => false
         };
     }
+
+    public string GetDeliveryPlace(DateTime date)
+    {
+        var history = DeliveryPlaceHistories
+            .Where(history => history.StartDate.Date <= date.Date &&
+                              (history.EndDate is null || history.EndDate.Value.Date >= date.Date))
+            .OrderByDescending(history => history.StartDate)
+            .FirstOrDefault();
+        return history?.DeliveryPlace ?? DeliveryPlace1;
+    }
+}
+
+public sealed class DeliveryPlaceHistory
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string DeliveryPlace { get; set; } = "";
+    public DateTime StartDate { get; set; } = DateTime.Today;
+    public DateTime? EndDate { get; set; }
 }
 
 public sealed class MealRecord

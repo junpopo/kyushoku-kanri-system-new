@@ -18,8 +18,7 @@ public sealed class PersonEditForm : Form
     private readonly ComboBox _type = new();
     private readonly TextBox _lastName = new();
     private readonly TextBox _firstName = new();
-    private readonly ComboBox _deliveryPlace1 = new();
-    private readonly ComboBox _deliveryPlace2 = new();
+    private readonly ComboBox _deliveryPlace = new();
     private readonly CheckBox _eatMonday = new() { Text = "月", AutoSize = true };
     private readonly CheckBox _eatTuesday = new() { Text = "火", AutoSize = true };
     private readonly CheckBox _eatWednesday = new() { Text = "水", AutoSize = true };
@@ -38,7 +37,22 @@ public sealed class PersonEditForm : Form
     public PersonEditForm(IReadOnlyCollection<string> deliveryPlaces, Person? person = null)
     {
         _deliveryPlaces = deliveryPlaces;
-        Person = person is null ? new Person() : new Person
+        Person = person is null ? new Person() : ClonePerson(person);
+
+        Text = person is null ? "1人追加" : "編集";
+        Width = 560;
+        Height = 720;
+        MinimumSize = new Size(520, 640);
+        StartPosition = FormStartPosition.CenterParent;
+        FormBorderStyle = FormBorderStyle.Sizable;
+
+        Controls.Add(CreateLayout());
+        LoadPerson();
+    }
+
+    private static Person ClonePerson(Person person)
+    {
+        return new Person
         {
             Id = person.Id,
             Type = person.Type,
@@ -49,7 +63,16 @@ public sealed class PersonEditForm : Form
             FirstName = person.FirstName,
             Name = person.FullName,
             DeliveryPlace1 = person.DeliveryPlace1,
-            DeliveryPlace2 = person.DeliveryPlace2,
+            DeliveryPlace2 = "",
+            DeliveryPlaceHistories = person.DeliveryPlaceHistories
+                .Select(history => new DeliveryPlaceHistory
+                {
+                    Id = history.Id,
+                    DeliveryPlace = history.DeliveryPlace,
+                    StartDate = history.StartDate,
+                    EndDate = history.EndDate
+                })
+                .ToList(),
             EatMonday = person.EatMonday,
             EatTuesday = person.EatTuesday,
             EatWednesday = person.EatWednesday,
@@ -61,16 +84,6 @@ public sealed class PersonEditForm : Form
             ActiveTo = person.ActiveTo,
             Memo = person.Memo
         };
-
-        Text = person is null ? "1人追加" : "編集";
-        Width = 560;
-        Height = 720;
-        MinimumSize = new Size(520, 640);
-        StartPosition = FormStartPosition.CenterParent;
-        FormBorderStyle = FormBorderStyle.Sizable;
-
-        Controls.Add(CreateLayout());
-        LoadPerson();
     }
 
     private Control CreateLayout()
@@ -99,7 +112,7 @@ public sealed class PersonEditForm : Form
     private GroupBox CreateBasicSection()
     {
         var group = CreateGroup("基本情報");
-        var panel = CreateGrid(3);
+        var panel = CreateGrid();
 
         _type.DropDownStyle = ComboBoxStyle.DropDownList;
         _type.Items.AddRange(TypeOptions.Select(option => option.Label).ToArray());
@@ -118,25 +131,49 @@ public sealed class PersonEditForm : Form
     private GroupBox CreateMealSection()
     {
         var group = CreateGroup("配膳・食事設定");
-        var panel = CreateGrid(3);
+        var panel = CreateGrid();
 
-        ConfigureDeliveryPlaceCombo(_deliveryPlace1, _deliveryPlaces, allowBlank: false);
-        ConfigureDeliveryPlaceCombo(_deliveryPlace2, _deliveryPlaces, allowBlank: true);
+        ConfigureDeliveryPlaceCombo(_deliveryPlace, _deliveryPlaces);
 
-        AddRow(panel, 0, "配膳場所1", _deliveryPlace1);
-        AddRow(panel, 1, "配膳場所2", _deliveryPlace2);
-        AddRow(panel, 2, "喫食日", CreateWeekdayPanel());
-        AddRow(panel, 3, "牛乳", _hasMilk);
-        AddRow(panel, 4, "アレルギー", _hasAllergySupport);
+        AddRow(panel, 0, "現在の配膳場所", CreateDeliveryPlacePanel());
+        AddRow(panel, 1, "喫食日", CreateWeekdayPanel());
+        AddRow(panel, 2, "牛乳", _hasMilk);
+        AddRow(panel, 3, "アレルギー", _hasAllergySupport);
 
         group.Controls.Add(panel);
         return group;
     }
 
+    private Control CreateDeliveryPlacePanel()
+    {
+        var panel = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            AutoSize = true,
+            ColumnCount = 2,
+            RowCount = 1
+        };
+        panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        panel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+
+        var historyButton = new Button
+        {
+            Text = "履歴管理",
+            AutoSize = true,
+            Margin = new Padding(8, 2, 0, 6),
+            Padding = new Padding(10, 4, 10, 4)
+        };
+        historyButton.Click += (_, _) => ManageDeliveryPlaceHistories();
+
+        panel.Controls.Add(_deliveryPlace, 0, 0);
+        panel.Controls.Add(historyButton, 1, 0);
+        return panel;
+    }
+
     private GroupBox CreateDateSection()
     {
         var group = CreateGroup("期間");
-        var panel = CreateGrid(2);
+        var panel = CreateGrid();
 
         _activeFrom.Format = DateTimePickerFormat.Short;
         _activeTo.Format = DateTimePickerFormat.Short;
@@ -197,17 +234,16 @@ public sealed class PersonEditForm : Form
         };
     }
 
-    private static TableLayoutPanel CreateGrid(int rowCount)
+    private static TableLayoutPanel CreateGrid()
     {
         var panel = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
             AutoSize = true,
             ColumnCount = 2,
-            RowCount = rowCount,
             Padding = new Padding(0, 4, 0, 0)
         };
-        panel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 110));
+        panel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 125));
         panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         return panel;
     }
@@ -227,14 +263,9 @@ public sealed class PersonEditForm : Form
         return panel;
     }
 
-    private static void ConfigureDeliveryPlaceCombo(ComboBox comboBox, IReadOnlyCollection<string> deliveryPlaces, bool allowBlank)
+    private static void ConfigureDeliveryPlaceCombo(ComboBox comboBox, IReadOnlyCollection<string> deliveryPlaces)
     {
         comboBox.DropDownStyle = ComboBoxStyle.DropDownList;
-        if (allowBlank)
-        {
-            comboBox.Items.Add("");
-        }
-
         comboBox.Items.AddRange(deliveryPlaces.OrderBy(place => place).Cast<object>().ToArray());
     }
 
@@ -260,8 +291,8 @@ public sealed class PersonEditForm : Form
 
         _lastName.Text = Person.LastName;
         _firstName.Text = Person.FirstName;
-        SelectComboText(_deliveryPlace1, Person.DeliveryPlace1);
-        SelectComboText(_deliveryPlace2, Person.DeliveryPlace2);
+        EnsureInitialHistory();
+        SelectComboText(_deliveryPlace, Person.GetDeliveryPlace(DateTime.Today));
         _eatMonday.Checked = Person.EatMonday;
         _eatTuesday.Checked = Person.EatTuesday;
         _eatWednesday.Checked = Person.EatWednesday;
@@ -273,6 +304,32 @@ public sealed class PersonEditForm : Form
         _hasActiveTo.Checked = Person.ActiveTo is not null;
         _activeTo.Value = Person.ActiveTo ?? DateTime.Today;
         _memo.Text = Person.Memo;
+    }
+
+    private void EnsureInitialHistory()
+    {
+        if (Person.DeliveryPlaceHistories.Count > 0 || string.IsNullOrWhiteSpace(Person.DeliveryPlace1))
+        {
+            return;
+        }
+
+        Person.DeliveryPlaceHistories.Add(new DeliveryPlaceHistory
+        {
+            DeliveryPlace = Person.DeliveryPlace1,
+            StartDate = Person.ActiveFrom.Date
+        });
+    }
+
+    private void ManageDeliveryPlaceHistories()
+    {
+        using var dialog = new DeliveryPlaceHistoryForm(Person.DeliveryPlaceHistories, _deliveryPlaces);
+        if (dialog.ShowDialog(this) != DialogResult.OK)
+        {
+            return;
+        }
+
+        Person.DeliveryPlaceHistories = dialog.Histories;
+        SelectComboText(_deliveryPlace, Person.GetDeliveryPlace(DateTime.Today));
     }
 
     private bool Apply()
@@ -293,9 +350,9 @@ public sealed class PersonEditForm : Form
             return false;
         }
 
-        if (string.IsNullOrWhiteSpace(_deliveryPlace1.Text))
+        if (string.IsNullOrWhiteSpace(_deliveryPlace.Text) && Person.DeliveryPlaceHistories.Count == 0)
         {
-            MessageBox.Show("配膳場所1を選択してください。");
+            MessageBox.Show("配膳場所を選択してください。");
             return false;
         }
 
@@ -312,8 +369,17 @@ public sealed class PersonEditForm : Form
         Person.LastName = _lastName.Text.Trim();
         Person.FirstName = _firstName.Text.Trim();
         Person.Name = $"{Person.LastName} {Person.FirstName}".Trim();
-        Person.DeliveryPlace1 = _deliveryPlace1.Text.Trim();
-        Person.DeliveryPlace2 = _deliveryPlace2.Text.Trim();
+        Person.DeliveryPlace1 = _deliveryPlace.Text.Trim();
+        Person.DeliveryPlace2 = "";
+        if (Person.DeliveryPlaceHistories.Count == 0)
+        {
+            Person.DeliveryPlaceHistories.Add(new DeliveryPlaceHistory
+            {
+                DeliveryPlace = Person.DeliveryPlace1,
+                StartDate = _activeFrom.Value.Date
+            });
+        }
+
         Person.EatMonday = _eatMonday.Checked;
         Person.EatTuesday = _eatTuesday.Checked;
         Person.EatWednesday = _eatWednesday.Checked;
