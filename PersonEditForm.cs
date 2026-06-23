@@ -2,10 +2,10 @@ namespace KyushokuKanriSystem;
 
 public sealed class PersonEditForm : Form
 {
-    private readonly ComboBox _type = new();
     private readonly TextBox _grade = new();
     private readonly TextBox _className = new();
     private readonly TextBox _studentNumber = new();
+    private readonly ComboBox _type = new();
     private readonly TextBox _lastName = new();
     private readonly TextBox _firstName = new();
     private readonly DateTimePicker _activeFrom = new();
@@ -34,7 +34,7 @@ public sealed class PersonEditForm : Form
 
         Text = person is null ? "1人追加" : "編集";
         Width = 440;
-        Height = 500;
+        Height = 520;
         StartPosition = FormStartPosition.CenterParent;
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
@@ -63,10 +63,10 @@ public sealed class PersonEditForm : Form
         _activeTo.Enabled = false;
         _hasActiveTo.CheckedChanged += (_, _) => _activeTo.Enabled = _hasActiveTo.Checked;
 
-        AddRow(panel, 0, "区分", _type);
-        AddRow(panel, 1, "番号", _studentNumber);
-        AddRow(panel, 2, "学年", _grade);
-        AddRow(panel, 3, "組", _className);
+        AddRow(panel, 0, "学年", _grade);
+        AddRow(panel, 1, "組", _className);
+        AddRow(panel, 2, "番号", _studentNumber);
+        AddRow(panel, 3, "区分", _type);
         AddRow(panel, 4, "姓", _lastName);
         AddRow(panel, 5, "名", _firstName);
         AddRow(panel, 6, "開始日", _activeFrom);
@@ -81,7 +81,7 @@ public sealed class PersonEditForm : Form
         };
         var ok = new Button { Text = "OK", DialogResult = DialogResult.OK, AutoSize = true };
         var cancel = new Button { Text = "キャンセル", DialogResult = DialogResult.Cancel, AutoSize = true };
-        ok.Click += (_, e) =>
+        ok.Click += (_, _) =>
         {
             if (!Apply())
             {
@@ -116,10 +116,10 @@ public sealed class PersonEditForm : Form
 
     private void LoadPerson()
     {
-        _type.SelectedIndex = Person.Type == PersonType.Student ? 0 : 1;
         _grade.Text = Person.Grade;
         _className.Text = Person.ClassName;
         _studentNumber.Text = Person.StudentNumber;
+        _type.SelectedIndex = Person.Type == PersonType.Student ? 0 : 1;
         _lastName.Text = Person.LastName;
         _firstName.Text = Person.FirstName;
         _activeFrom.Value = Person.ActiveFrom;
@@ -130,13 +130,23 @@ public sealed class PersonEditForm : Form
 
     private bool Apply()
     {
+        var selectedType = _type.SelectedIndex == 1 ? PersonType.Staff : PersonType.Student;
+        if (selectedType == PersonType.Student &&
+            (string.IsNullOrWhiteSpace(_grade.Text) ||
+             string.IsNullOrWhiteSpace(_className.Text) ||
+             string.IsNullOrWhiteSpace(_studentNumber.Text)))
+        {
+            MessageBox.Show("生徒の場合は、学年・組・番号を入力してください。");
+            return false;
+        }
+
         if (string.IsNullOrWhiteSpace(_lastName.Text + _firstName.Text))
         {
             MessageBox.Show("姓または名を入力してください。");
             return false;
         }
 
-        Person.Type = _type.SelectedIndex == 1 ? PersonType.Staff : PersonType.Student;
+        Person.Type = selectedType;
         Person.Grade = _grade.Text.Trim();
         Person.ClassName = _className.Text.Trim();
         Person.StudentNumber = _studentNumber.Text.Trim();
