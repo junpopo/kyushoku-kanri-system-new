@@ -264,7 +264,7 @@ public sealed class MainForm : Form
     {
         _summaryRows.Clear();
         var groups = _data.People
-            .GroupBy(p => p.Type == PersonType.Student ? $"{p.Grade}年{p.ClassName}組" : "職員")
+            .GroupBy(p => p.GroupLabel)
             .OrderBy(g => g.Key);
 
         foreach (var group in groups)

@@ -4,8 +4,12 @@ namespace KyushokuKanriSystem;
 
 public enum PersonType
 {
-    Student,
-    Staff
+    Student = 0,
+    Staff = 1,
+    Alt = 2,
+    Trainee = 3,
+    Tasting = 4,
+    Guest = 5
 }
 
 public enum MealStatus
@@ -30,10 +34,19 @@ public sealed class Person
     public string Memo { get; set; } = "";
 
     [JsonIgnore]
-    public string TypeLabel => Type == PersonType.Student ? "生徒" : "職員";
+    public string TypeLabel => Type switch
+    {
+        PersonType.Staff => "職員",
+        PersonType.Student => "生徒",
+        PersonType.Alt => "ALT",
+        PersonType.Trainee => "教育実習生",
+        PersonType.Tasting => "試食会",
+        PersonType.Guest => "ゲスト",
+        _ => "生徒"
+    };
 
     [JsonIgnore]
-    public string GroupLabel => Type == PersonType.Student ? $"{Grade}年{ClassName}組".Trim() : "職員";
+    public string GroupLabel => Type == PersonType.Student ? $"{Grade}年{ClassName}組".Trim() : TypeLabel;
 
     [JsonIgnore]
     public string FullName => string.IsNullOrWhiteSpace(LastName + FirstName)

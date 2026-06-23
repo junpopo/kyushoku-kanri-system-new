@@ -2,6 +2,16 @@ namespace KyushokuKanriSystem;
 
 public sealed class PersonEditForm : Form
 {
+    private static readonly (PersonType Type, string Label)[] TypeOptions =
+    [
+        (PersonType.Staff, "職員"),
+        (PersonType.Student, "生徒"),
+        (PersonType.Alt, "ALT"),
+        (PersonType.Trainee, "教育実習生"),
+        (PersonType.Tasting, "試食会"),
+        (PersonType.Guest, "ゲスト")
+    ];
+
     private readonly TextBox _grade = new();
     private readonly TextBox _className = new();
     private readonly TextBox _studentNumber = new();
@@ -57,7 +67,7 @@ public sealed class PersonEditForm : Form
         panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
         _type.DropDownStyle = ComboBoxStyle.DropDownList;
-        _type.Items.AddRange(["生徒", "職員"]);
+        _type.Items.AddRange(TypeOptions.Select(option => option.Label).ToArray());
         _activeFrom.Format = DateTimePickerFormat.Short;
         _activeTo.Format = DateTimePickerFormat.Short;
         _activeTo.Enabled = false;
@@ -119,7 +129,11 @@ public sealed class PersonEditForm : Form
         _grade.Text = Person.Grade;
         _className.Text = Person.ClassName;
         _studentNumber.Text = Person.StudentNumber;
-        _type.SelectedIndex = Person.Type == PersonType.Student ? 0 : 1;
+        _type.SelectedIndex = Array.FindIndex(TypeOptions, option => option.Type == Person.Type);
+        if (_type.SelectedIndex < 0)
+        {
+            _type.SelectedIndex = 1;
+        }
         _lastName.Text = Person.LastName;
         _firstName.Text = Person.FirstName;
         _activeFrom.Value = Person.ActiveFrom;
@@ -130,13 +144,13 @@ public sealed class PersonEditForm : Form
 
     private bool Apply()
     {
-        var selectedType = _type.SelectedIndex == 1 ? PersonType.Staff : PersonType.Student;
-        if (selectedType == PersonType.Student &&
+        var selectedType = TypeOptions[Math.Max(0, _type.SelectedIndex)].Type;
+        if (selectedType != PersonType.Staff &&
             (string.IsNullOrWhiteSpace(_grade.Text) ||
              string.IsNullOrWhiteSpace(_className.Text) ||
              string.IsNullOrWhiteSpace(_studentNumber.Text)))
         {
-            MessageBox.Show("生徒の場合は、学年・組・番号を入力してください。");
+            MessageBox.Show("職員以外の場合は、学年・組・番号を入力してください。");
             return false;
         }
 

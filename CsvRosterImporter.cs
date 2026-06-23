@@ -50,11 +50,7 @@ public static class CsvRosterImporter
                 continue;
             }
 
-            var typeText = Get(row, header, "type", "区分", "種別");
-            var type = typeText.Contains("職", StringComparison.Ordinal) ||
-                       typeText.Equals("staff", StringComparison.OrdinalIgnoreCase)
-                ? PersonType.Staff
-                : PersonType.Student;
+            var type = ParsePersonType(Get(row, header, "type", "区分", "種別"));
 
             people.Add(new Person
             {
@@ -85,6 +81,37 @@ public static class CsvRosterImporter
         }
 
         return "";
+    }
+
+    private static PersonType ParsePersonType(string value)
+    {
+        var text = value.Trim();
+        if (text.Equals("ALT", StringComparison.OrdinalIgnoreCase))
+        {
+            return PersonType.Alt;
+        }
+
+        if (text.Contains("教育", StringComparison.Ordinal) || text.Contains("実習", StringComparison.Ordinal))
+        {
+            return PersonType.Trainee;
+        }
+
+        if (text.Contains("試食", StringComparison.Ordinal))
+        {
+            return PersonType.Tasting;
+        }
+
+        if (text.Contains("ゲスト", StringComparison.Ordinal) || text.Equals("guest", StringComparison.OrdinalIgnoreCase))
+        {
+            return PersonType.Guest;
+        }
+
+        if (text.Contains("職", StringComparison.Ordinal) || text.Equals("staff", StringComparison.OrdinalIgnoreCase))
+        {
+            return PersonType.Staff;
+        }
+
+        return PersonType.Student;
     }
 
     private static string NormalizeHeader(string value)
