@@ -61,6 +61,15 @@ public static class CsvRosterImporter
                 LastName = lastName,
                 FirstName = firstName,
                 Name = $"{lastName} {firstName}".Trim(),
+                DeliveryPlace1 = Get(row, header, "deliveryplace1", "配膳場所1", "配膳場所１").Trim(),
+                DeliveryPlace2 = Get(row, header, "deliveryplace2", "配膳場所2", "配膳場所２").Trim(),
+                EatMonday = GetBool(row, header, true, "eatmonday", "月", "月曜", "月曜日"),
+                EatTuesday = GetBool(row, header, true, "eattuesday", "火", "火曜", "火曜日"),
+                EatWednesday = GetBool(row, header, true, "eatwednesday", "水", "水曜", "水曜日"),
+                EatThursday = GetBool(row, header, true, "eatthursday", "木", "木曜", "木曜日"),
+                EatFriday = GetBool(row, header, true, "eatfriday", "金", "金曜", "金曜日"),
+                HasMilk = GetBool(row, header, true, "milk", "hasmilk", "牛乳", "牛乳有無"),
+                HasAllergySupport = GetBool(row, header, false, "allergy", "hasallergysupport", "アレルギー", "アレルギー対応", "アレルギー対応有無"),
                 ActiveFrom = DateTime.Today,
                 Memo = Get(row, header, "memo", "備考").Trim()
             });
@@ -81,6 +90,25 @@ public static class CsvRosterImporter
         }
 
         return "";
+    }
+
+    private static bool GetBool(string[] row, string[] header, bool defaultValue, params string[] names)
+    {
+        var value = Get(row, header, names).Trim();
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return defaultValue;
+        }
+
+        return value.Equals("true", StringComparison.OrdinalIgnoreCase) ||
+               value.Equals("1", StringComparison.OrdinalIgnoreCase) ||
+               value.Equals("yes", StringComparison.OrdinalIgnoreCase) ||
+               value.Equals("y", StringComparison.OrdinalIgnoreCase) ||
+               value.Equals("あり", StringComparison.Ordinal) ||
+               value.Equals("有", StringComparison.Ordinal) ||
+               value.Equals("○", StringComparison.Ordinal) ||
+               value.Equals("〇", StringComparison.Ordinal) ||
+               value.Equals("済", StringComparison.Ordinal);
     }
 
     private static PersonType ParsePersonType(string value)

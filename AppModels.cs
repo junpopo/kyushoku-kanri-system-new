@@ -29,6 +29,15 @@ public sealed class Person
     public string LastName { get; set; } = "";
     public string FirstName { get; set; } = "";
     public string Name { get; set; } = "";
+    public string DeliveryPlace1 { get; set; } = "";
+    public string DeliveryPlace2 { get; set; } = "";
+    public bool EatMonday { get; set; } = true;
+    public bool EatTuesday { get; set; } = true;
+    public bool EatWednesday { get; set; } = true;
+    public bool EatThursday { get; set; } = true;
+    public bool EatFriday { get; set; } = true;
+    public bool HasMilk { get; set; } = true;
+    public bool HasAllergySupport { get; set; }
     public DateTime ActiveFrom { get; set; } = DateTime.Today;
     public DateTime? ActiveTo { get; set; }
     public string Memo { get; set; } = "";
@@ -52,6 +61,19 @@ public sealed class Person
     public string FullName => string.IsNullOrWhiteSpace(LastName + FirstName)
         ? Name
         : $"{LastName} {FirstName}".Trim();
+
+    public bool EatsOn(DayOfWeek dayOfWeek)
+    {
+        return dayOfWeek switch
+        {
+            DayOfWeek.Monday => EatMonday,
+            DayOfWeek.Tuesday => EatTuesday,
+            DayOfWeek.Wednesday => EatWednesday,
+            DayOfWeek.Thursday => EatThursday,
+            DayOfWeek.Friday => EatFriday,
+            _ => false
+        };
+    }
 }
 
 public sealed class MealRecord

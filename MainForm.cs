@@ -193,7 +193,22 @@ public sealed class MainForm : Form
         _peopleGrid.AllowUserToDeleteRows = false;
         _peopleGrid.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
         _peopleGrid.MultiSelect = false;
-        _peopleGrid.AutoGenerateColumns = true;
+        _peopleGrid.AutoGenerateColumns = false;
+        _peopleGrid.Columns.Clear();
+        _peopleGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "区分", DataPropertyName = nameof(PersonRow.Type), ReadOnly = true });
+        _peopleGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "学年", DataPropertyName = nameof(PersonRow.Grade), ReadOnly = true });
+        _peopleGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "組", DataPropertyName = nameof(PersonRow.ClassName), ReadOnly = true });
+        _peopleGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "番号", DataPropertyName = nameof(PersonRow.StudentNumber), ReadOnly = true });
+        _peopleGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "姓", DataPropertyName = nameof(PersonRow.LastName), ReadOnly = true });
+        _peopleGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "名", DataPropertyName = nameof(PersonRow.FirstName), ReadOnly = true });
+        _peopleGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "配膳場所1", DataPropertyName = nameof(PersonRow.DeliveryPlace1), ReadOnly = true });
+        _peopleGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "配膳場所2", DataPropertyName = nameof(PersonRow.DeliveryPlace2), ReadOnly = true });
+        _peopleGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "喫食日", DataPropertyName = nameof(PersonRow.EatDays), ReadOnly = true });
+        _peopleGrid.Columns.Add(new DataGridViewCheckBoxColumn { HeaderText = "牛乳", DataPropertyName = nameof(PersonRow.HasMilk), ReadOnly = true });
+        _peopleGrid.Columns.Add(new DataGridViewCheckBoxColumn { HeaderText = "アレルギー", DataPropertyName = nameof(PersonRow.HasAllergySupport), ReadOnly = true });
+        _peopleGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "開始日", DataPropertyName = nameof(PersonRow.ActiveFrom), ReadOnly = true });
+        _peopleGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "終了日", DataPropertyName = nameof(PersonRow.ActiveTo), ReadOnly = true });
+        _peopleGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "備考", DataPropertyName = nameof(PersonRow.Memo), ReadOnly = true });
         _peopleGrid.DataSource = _personRows;
     }
 
@@ -210,6 +225,10 @@ public sealed class MainForm : Form
         _dailyGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "番号", DataPropertyName = nameof(DailyMealRow.StudentNumber), ReadOnly = true });
         _dailyGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "姓", DataPropertyName = nameof(DailyMealRow.LastName), ReadOnly = true, Width = 110 });
         _dailyGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "名", DataPropertyName = nameof(DailyMealRow.FirstName), ReadOnly = true, Width = 110 });
+        _dailyGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "配膳場所1", DataPropertyName = nameof(DailyMealRow.DeliveryPlace1), ReadOnly = true });
+        _dailyGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "配膳場所2", DataPropertyName = nameof(DailyMealRow.DeliveryPlace2), ReadOnly = true });
+        _dailyGrid.Columns.Add(new DataGridViewCheckBoxColumn { HeaderText = "牛乳", DataPropertyName = nameof(DailyMealRow.HasMilk), ReadOnly = true });
+        _dailyGrid.Columns.Add(new DataGridViewCheckBoxColumn { HeaderText = "アレルギー", DataPropertyName = nameof(DailyMealRow.HasAllergySupport), ReadOnly = true });
         _dailyGrid.Columns.Add(new DataGridViewCheckBoxColumn { HeaderText = "提供", DataPropertyName = nameof(DailyMealRow.IsServed) });
         _dailyGrid.Columns.Add(new DataGridViewComboBoxColumn
         {
@@ -254,7 +273,7 @@ public sealed class MainForm : Form
         foreach (var person in activePeople)
         {
             var record = _data.MealRecords.FirstOrDefault(r => r.PersonId == person.Id && r.Date.Date == date);
-            _dailyRows.Add(DailyMealRow.From(person, record));
+            _dailyRows.Add(DailyMealRow.From(person, record, date));
         }
 
         UpdateDailyTotal();
@@ -360,6 +379,15 @@ public sealed class MainForm : Form
         selected.LastName = dialog.Person.LastName;
         selected.FirstName = dialog.Person.FirstName;
         selected.Name = dialog.Person.FullName;
+        selected.DeliveryPlace1 = dialog.Person.DeliveryPlace1;
+        selected.DeliveryPlace2 = dialog.Person.DeliveryPlace2;
+        selected.EatMonday = dialog.Person.EatMonday;
+        selected.EatTuesday = dialog.Person.EatTuesday;
+        selected.EatWednesday = dialog.Person.EatWednesday;
+        selected.EatThursday = dialog.Person.EatThursday;
+        selected.EatFriday = dialog.Person.EatFriday;
+        selected.HasMilk = dialog.Person.HasMilk;
+        selected.HasAllergySupport = dialog.Person.HasAllergySupport;
         selected.ActiveFrom = dialog.Person.ActiveFrom;
         selected.ActiveTo = dialog.Person.ActiveTo;
         selected.Memo = dialog.Person.Memo;
@@ -473,30 +501,40 @@ public sealed class MainForm : Form
     private sealed class PersonRow
     {
         public Guid Id { get; init; }
-        public string 区分 { get; init; } = "";
-        public string 学年 { get; init; } = "";
-        public string 組 { get; init; } = "";
-        public string 番号 { get; init; } = "";
-        public string 姓 { get; init; } = "";
-        public string 名 { get; init; } = "";
-        public string 開始日 { get; init; } = "";
-        public string 終了日 { get; init; } = "";
-        public string 備考 { get; init; } = "";
+        public string Type { get; init; } = "";
+        public string Grade { get; init; } = "";
+        public string ClassName { get; init; } = "";
+        public string StudentNumber { get; init; } = "";
+        public string LastName { get; init; } = "";
+        public string FirstName { get; init; } = "";
+        public string DeliveryPlace1 { get; init; } = "";
+        public string DeliveryPlace2 { get; init; } = "";
+        public string EatDays { get; init; } = "";
+        public bool HasMilk { get; init; }
+        public bool HasAllergySupport { get; init; }
+        public string ActiveFrom { get; init; } = "";
+        public string ActiveTo { get; init; } = "";
+        public string Memo { get; init; } = "";
 
         public static PersonRow FromPerson(Person person)
         {
             return new PersonRow
             {
                 Id = person.Id,
-                区分 = person.TypeLabel,
-                学年 = person.Grade,
-                組 = person.ClassName,
-                番号 = person.StudentNumber,
-                姓 = person.LastName,
-                名 = person.FirstName,
-                開始日 = person.ActiveFrom.ToShortDateString(),
-                終了日 = person.ActiveTo?.ToShortDateString() ?? "",
-                備考 = person.Memo
+                Type = person.TypeLabel,
+                Grade = person.Grade,
+                ClassName = person.ClassName,
+                StudentNumber = person.StudentNumber,
+                LastName = person.LastName,
+                FirstName = person.FirstName,
+                DeliveryPlace1 = person.DeliveryPlace1,
+                DeliveryPlace2 = person.DeliveryPlace2,
+                EatDays = FormatEatDays(person),
+                HasMilk = person.HasMilk,
+                HasAllergySupport = person.HasAllergySupport,
+                ActiveFrom = person.ActiveFrom.ToShortDateString(),
+                ActiveTo = person.ActiveTo?.ToShortDateString() ?? "",
+                Memo = person.Memo
             };
         }
     }
@@ -510,13 +548,17 @@ public sealed class MainForm : Form
         public string StudentNumber { get; init; } = "";
         public string LastName { get; init; } = "";
         public string FirstName { get; init; } = "";
+        public string DeliveryPlace1 { get; init; } = "";
+        public string DeliveryPlace2 { get; init; } = "";
+        public bool HasMilk { get; init; }
+        public bool HasAllergySupport { get; init; }
         public bool IsServed { get; set; } = true;
         public string Status { get; set; } = "提供";
         public string Reason { get; set; } = "";
 
-        public static DailyMealRow From(Person person, MealRecord? record)
+        public static DailyMealRow From(Person person, MealRecord? record, DateTime date)
         {
-            var status = record is null ? MealStatus.Serve : record.Status;
+            var status = record?.Status ?? (person.EatsOn(date.DayOfWeek) ? MealStatus.Serve : MealStatus.Stop);
             return new DailyMealRow
             {
                 Id = person.Id,
@@ -526,11 +568,26 @@ public sealed class MainForm : Form
                 StudentNumber = person.StudentNumber,
                 LastName = person.LastName,
                 FirstName = person.FirstName,
+                DeliveryPlace1 = person.DeliveryPlace1,
+                DeliveryPlace2 = person.DeliveryPlace2,
+                HasMilk = person.HasMilk,
+                HasAllergySupport = person.HasAllergySupport,
                 IsServed = status == MealStatus.Serve,
                 Status = StatusToLabel(status),
-                Reason = record?.Reason ?? ""
+                Reason = record?.Reason ?? (person.EatsOn(date.DayOfWeek) ? "" : "喫食日ではありません")
             };
         }
+    }
+
+    private static string FormatEatDays(Person person)
+    {
+        var days = new List<string>();
+        if (person.EatMonday) days.Add("月");
+        if (person.EatTuesday) days.Add("火");
+        if (person.EatWednesday) days.Add("水");
+        if (person.EatThursday) days.Add("木");
+        if (person.EatFriday) days.Add("金");
+        return string.Join("", days);
     }
 
     private sealed class SummaryRow
