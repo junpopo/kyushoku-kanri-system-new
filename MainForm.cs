@@ -9,6 +9,7 @@ public sealed class MainForm : Form
     private readonly BindingList<PersonRow> _personRows = [];
     private readonly BindingList<DailyMealRow> _dailyRows = [];
     private readonly BindingList<SummaryRow> _summaryRows = [];
+    private readonly AppUser? _currentUser;
 
     private readonly DataGridView _peopleGrid = new();
     private readonly DataGridView _dailyGrid = new();
@@ -16,12 +17,15 @@ public sealed class MainForm : Form
     private readonly DateTimePicker _mealDatePicker = new();
     private readonly Label _dailyTotalLabel = new();
 
-    public MainForm()
+    public MainForm(AppUser? currentUser = null)
     {
+        _currentUser = currentUser;
         _data = _repository.Load();
         NormalizePeople();
         NormalizeDeliveryPlaces();
-        Text = "給食管理システム";
+        Text = _currentUser is null
+            ? "給食管理システム"
+            : $"給食管理システム - {_currentUser.DisplayName}";
         Width = 1120;
         Height = 760;
         MinimumSize = new Size(980, 640);

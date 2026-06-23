@@ -19,6 +19,22 @@ public enum MealStatus
     Absent
 }
 
+public enum UserRole
+{
+    Admin,
+    User
+}
+
+public sealed class AppUser
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string LoginId { get; set; } = "";
+    public string DisplayName { get; set; } = "";
+    public string PasswordHash { get; set; } = "";
+    public UserRole Role { get; set; } = UserRole.User;
+    public bool IsActive { get; set; } = true;
+}
+
 public sealed class Person
 {
     public Guid Id { get; set; } = Guid.NewGuid();
@@ -86,6 +102,7 @@ public sealed class MealRecord
 
 public sealed class AppData
 {
+    public List<AppUser> Users { get; set; } = [];
     public List<Person> People { get; set; } = [];
     public List<MealRecord> MealRecords { get; set; } = [];
     public List<string> DeliveryPlaces { get; set; } = [];
