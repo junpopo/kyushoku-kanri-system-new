@@ -361,6 +361,16 @@ public sealed class MainForm : Form
         var added = 0;
         foreach (var person in imported)
         {
+            var classDeliveryPlace = CreateClassDeliveryPlace(person.Grade, person.ClassName);
+            if (!string.IsNullOrWhiteSpace(classDeliveryPlace))
+            {
+                AddDeliveryPlaceIfMissing(classDeliveryPlace);
+                if (string.IsNullOrWhiteSpace(person.DeliveryPlace1))
+                {
+                    person.DeliveryPlace1 = classDeliveryPlace;
+                }
+            }
+
             var exists = _data.People.Any(p =>
                 p.LastName == person.LastName &&
                 p.FirstName == person.FirstName &&
@@ -380,6 +390,18 @@ public sealed class MainForm : Form
         RefreshDaily();
         RefreshSummary();
         MessageBox.Show($"{added}人を読み込みました。", "名簿読み込み", MessageBoxButtons.OK, MessageBoxIcon.Information);
+    }
+
+    private static string CreateClassDeliveryPlace(string grade, string className)
+    {
+        var trimmedGrade = grade.Trim();
+        var trimmedClass = className.Trim();
+        if (trimmedGrade.Length == 0 || trimmedClass.Length == 0)
+        {
+            return "";
+        }
+
+        return $"{trimmedGrade}年{trimmedClass}組";
     }
 
     private void AddPerson()
