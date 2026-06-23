@@ -88,4 +88,5 @@ public sealed class AppData
 {
     public List<Person> People { get; set; } = [];
     public List<MealRecord> MealRecords { get; set; } = [];
+    public List<string> DeliveryPlaces { get; set; } = [];
 }

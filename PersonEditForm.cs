@@ -18,8 +18,8 @@ public sealed class PersonEditForm : Form
     private readonly ComboBox _type = new();
     private readonly TextBox _lastName = new();
     private readonly TextBox _firstName = new();
-    private readonly TextBox _deliveryPlace1 = new();
-    private readonly TextBox _deliveryPlace2 = new();
+    private readonly ComboBox _deliveryPlace1 = new();
+    private readonly ComboBox _deliveryPlace2 = new();
     private readonly CheckBox _eatMonday = new() { Text = "月" };
     private readonly CheckBox _eatTuesday = new() { Text = "火" };
     private readonly CheckBox _eatWednesday = new() { Text = "水" };
@@ -31,11 +31,13 @@ public sealed class PersonEditForm : Form
     private readonly CheckBox _hasActiveTo = new();
     private readonly DateTimePicker _activeTo = new();
     private readonly TextBox _memo = new();
+    private readonly IReadOnlyCollection<string> _deliveryPlaces;
 
     public Person Person { get; private set; }
 
-    public PersonEditForm(Person? person = null)
+    public PersonEditForm(IReadOnlyCollection<string> deliveryPlaces, Person? person = null)
     {
+        _deliveryPlaces = deliveryPlaces;
         Person = person is null ? new Person() : new Person
         {
             Id = person.Id,
@@ -86,6 +88,8 @@ public sealed class PersonEditForm : Form
 
         _type.DropDownStyle = ComboBoxStyle.DropDownList;
         _type.Items.AddRange(TypeOptions.Select(option => option.Label).ToArray());
+        ConfigureDeliveryPlaceCombo(_deliveryPlace1, _deliveryPlaces);
+        ConfigureDeliveryPlaceCombo(_deliveryPlace2, _deliveryPlaces);
         _activeFrom.Format = DateTimePickerFormat.Short;
         _activeTo.Format = DateTimePickerFormat.Short;
         _activeTo.Enabled = false;
@@ -138,6 +142,12 @@ public sealed class PersonEditForm : Form
         return panel;
     }
 
+    private static void ConfigureDeliveryPlaceCombo(ComboBox comboBox, IReadOnlyCollection<string> deliveryPlaces)
+    {
+        comboBox.DropDownStyle = ComboBoxStyle.DropDownList;
+        comboBox.Items.AddRange(deliveryPlaces.OrderBy(place => place).Cast<object>().ToArray());
+    }
+
     private Control CreateEndDatePanel()
     {
         var panel = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, WrapContents = false };
@@ -167,8 +177,8 @@ public sealed class PersonEditForm : Form
 
         _lastName.Text = Person.LastName;
         _firstName.Text = Person.FirstName;
-        _deliveryPlace1.Text = Person.DeliveryPlace1;
-        _deliveryPlace2.Text = Person.DeliveryPlace2;
+        SelectComboText(_deliveryPlace1, Person.DeliveryPlace1);
+        SelectComboText(_deliveryPlace2, Person.DeliveryPlace2);
         _eatMonday.Checked = Person.EatMonday;
         _eatTuesday.Checked = Person.EatTuesday;
         _eatWednesday.Checked = Person.EatWednesday;
@@ -232,5 +242,20 @@ public sealed class PersonEditForm : Form
         Person.ActiveTo = _hasActiveTo.Checked ? _activeTo.Value.Date : null;
         Person.Memo = _memo.Text.Trim();
         return true;
+    }
+
+    private static void SelectComboText(ComboBox comboBox, string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            comboBox.SelectedIndex = comboBox.Items.Count > 0 ? 0 : -1;
+            return;
+        }
+
+        var index = comboBox.FindStringExact(value);
+        if (index >= 0)
+        {
+            comboBox.SelectedIndex = index;
+        }
     }
 }

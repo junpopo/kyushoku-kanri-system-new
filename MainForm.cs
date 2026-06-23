@@ -20,6 +20,7 @@ public sealed class MainForm : Form
     {
         _data = _repository.Load();
         NormalizePeople();
+        NormalizeDeliveryPlaces();
         Text = "給食管理システム";
         Width = 1120;
         Height = 760;
@@ -60,6 +61,37 @@ public sealed class MainForm : Form
         }
     }
 
+    private void NormalizeDeliveryPlaces()
+    {
+        foreach (var place in _data.People
+            .SelectMany(person => new[] { person.DeliveryPlace1, person.DeliveryPlace2 })
+            .Where(place => !string.IsNullOrWhiteSpace(place)))
+        {
+            AddDeliveryPlaceIfMissing(place);
+        }
+
+        _data.DeliveryPlaces = _data.DeliveryPlaces
+            .Where(place => !string.IsNullOrWhiteSpace(place))
+            .Select(place => place.Trim())
+            .Distinct(StringComparer.CurrentCultureIgnoreCase)
+            .OrderBy(place => place)
+            .ToList();
+    }
+
+    private void AddDeliveryPlaceIfMissing(string place)
+    {
+        var trimmed = place.Trim();
+        if (trimmed.Length == 0)
+        {
+            return;
+        }
+
+        if (!_data.DeliveryPlaces.Contains(trimmed, StringComparer.CurrentCultureIgnoreCase))
+        {
+            _data.DeliveryPlaces.Add(trimmed);
+        }
+    }
+
     private Control CreateLayout()
     {
         var tabs = new TabControl { Dock = DockStyle.Fill };
@@ -92,6 +124,7 @@ public sealed class MainForm : Form
         buttons.Controls.Add(CreateButton("1人追加", AddPerson));
         buttons.Controls.Add(CreateButton("選択を編集", EditSelectedPerson));
         buttons.Controls.Add(CreateButton("選択を削除", DeleteSelectedPerson));
+        buttons.Controls.Add(CreateButton("配膳場所管理", ManageDeliveryPlaces));
 
         ConfigurePeopleGrid();
         panel.Controls.Add(buttons, 0, 0);
@@ -347,7 +380,7 @@ public sealed class MainForm : Form
 
     private void AddPerson()
     {
-        using var dialog = new PersonEditForm();
+        using var dialog = new PersonEditForm(_data.DeliveryPlaces);
         if (dialog.ShowDialog(this) != DialogResult.OK)
         {
             return;
@@ -366,7 +399,7 @@ public sealed class MainForm : Form
             return;
         }
 
-        using var dialog = new PersonEditForm(selected);
+        using var dialog = new PersonEditForm(_data.DeliveryPlaces, selected);
         if (dialog.ShowDialog(this) != DialogResult.OK)
         {
             return;
@@ -392,6 +425,20 @@ public sealed class MainForm : Form
         selected.ActiveTo = dialog.Person.ActiveTo;
         selected.Memo = dialog.Person.Memo;
         SaveAll();
+    }
+
+    private void ManageDeliveryPlaces()
+    {
+        using var dialog = new DeliveryPlaceManagerForm(_data.DeliveryPlaces, _data.People);
+        if (dialog.ShowDialog(this) != DialogResult.OK)
+        {
+            return;
+        }
+
+        _data.DeliveryPlaces = dialog.DeliveryPlaces;
+        _repository.Save(_data);
+        RefreshPeople();
+        RefreshDaily();
     }
 
     private void DeleteSelectedPerson()
