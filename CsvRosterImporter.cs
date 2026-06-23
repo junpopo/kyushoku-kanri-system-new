@@ -27,55 +27,45 @@ public static class CsvRosterImporter
 
         foreach (var row in lines.Skip(1))
         {
-            var lastName = Get(row, header, "lastname", "last_name", "姓", "名字", "苗字").Trim();
-            var firstName = Get(row, header, "firstname", "first_name", "名", "名前").Trim();
-            var fullName = Get(row, header, "name", "氏名").Trim();
-
-            if (string.IsNullOrWhiteSpace(lastName + firstName) && !string.IsNullOrWhiteSpace(fullName))
-            {
-                var parts = fullName.Split([' ', '　'], StringSplitOptions.RemoveEmptyEntries);
-                if (parts.Length >= 2)
-                {
-                    lastName = parts[0];
-                    firstName = string.Join("", parts.Skip(1));
-                }
-                else
-                {
-                    lastName = fullName;
-                }
-            }
-
-            if (string.IsNullOrWhiteSpace(lastName + firstName))
+            var fullName = Get(row, header, "氏名", "name").Trim();
+            if (string.IsNullOrWhiteSpace(fullName))
             {
                 continue;
             }
 
-            var type = ParsePersonType(Get(row, header, "type", "区分", "種別"));
-
+            var (lastName, firstName) = SplitName(fullName);
             people.Add(new Person
             {
-                Type = type,
-                Grade = Get(row, header, "grade", "学年").Trim(),
-                ClassName = Get(row, header, "class", "classname", "組", "クラス").Trim(),
-                StudentNumber = Get(row, header, "number", "studentnumber", "出席番号", "番号").Trim(),
+                Type = PersonType.Student,
+                Grade = Get(row, header, "学年", "grade").Trim(),
+                ClassName = Get(row, header, "組", "クラス", "class", "classname").Trim(),
+                StudentNumber = Get(row, header, "番号", "出席番号", "number", "studentnumber").Trim(),
                 LastName = lastName,
                 FirstName = firstName,
-                Name = $"{lastName} {firstName}".Trim(),
-                DeliveryPlace1 = Get(row, header, "deliveryplace1", "配膳場所1", "配膳場所１").Trim(),
-                DeliveryPlace2 = Get(row, header, "deliveryplace2", "配膳場所2", "配膳場所２").Trim(),
-                EatMonday = GetBool(row, header, true, "eatmonday", "月", "月曜", "月曜日"),
-                EatTuesday = GetBool(row, header, true, "eattuesday", "火", "火曜", "火曜日"),
-                EatWednesday = GetBool(row, header, true, "eatwednesday", "水", "水曜", "水曜日"),
-                EatThursday = GetBool(row, header, true, "eatthursday", "木", "木曜", "木曜日"),
-                EatFriday = GetBool(row, header, true, "eatfriday", "金", "金曜", "金曜日"),
-                HasMilk = GetBool(row, header, true, "milk", "hasmilk", "牛乳", "牛乳有無"),
-                HasAllergySupport = GetBool(row, header, false, "allergy", "hasallergysupport", "アレルギー", "アレルギー対応", "アレルギー対応有無"),
-                ActiveFrom = DateTime.Today,
-                Memo = Get(row, header, "memo", "備考").Trim()
+                Name = fullName,
+                EatMonday = true,
+                EatTuesday = true,
+                EatWednesday = true,
+                EatThursday = true,
+                EatFriday = true,
+                HasMilk = true,
+                HasAllergySupport = false,
+                ActiveFrom = DateTime.Today
             });
         }
 
         return people;
+    }
+
+    private static (string LastName, string FirstName) SplitName(string fullName)
+    {
+        var parts = fullName.Split([' ', '　'], StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length >= 2)
+        {
+            return (parts[0], string.Join("", parts.Skip(1)));
+        }
+
+        return (fullName, "");
     }
 
     private static string Get(string[] row, string[] header, params string[] names)
@@ -90,56 +80,6 @@ public static class CsvRosterImporter
         }
 
         return "";
-    }
-
-    private static bool GetBool(string[] row, string[] header, bool defaultValue, params string[] names)
-    {
-        var value = Get(row, header, names).Trim();
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return defaultValue;
-        }
-
-        return value.Equals("true", StringComparison.OrdinalIgnoreCase) ||
-               value.Equals("1", StringComparison.OrdinalIgnoreCase) ||
-               value.Equals("yes", StringComparison.OrdinalIgnoreCase) ||
-               value.Equals("y", StringComparison.OrdinalIgnoreCase) ||
-               value.Equals("あり", StringComparison.Ordinal) ||
-               value.Equals("有", StringComparison.Ordinal) ||
-               value.Equals("○", StringComparison.Ordinal) ||
-               value.Equals("〇", StringComparison.Ordinal) ||
-               value.Equals("済", StringComparison.Ordinal);
-    }
-
-    private static PersonType ParsePersonType(string value)
-    {
-        var text = value.Trim();
-        if (text.Equals("ALT", StringComparison.OrdinalIgnoreCase))
-        {
-            return PersonType.Alt;
-        }
-
-        if (text.Contains("教育", StringComparison.Ordinal) || text.Contains("実習", StringComparison.Ordinal))
-        {
-            return PersonType.Trainee;
-        }
-
-        if (text.Contains("試食", StringComparison.Ordinal))
-        {
-            return PersonType.Tasting;
-        }
-
-        if (text.Contains("ゲスト", StringComparison.Ordinal) || text.Equals("guest", StringComparison.OrdinalIgnoreCase))
-        {
-            return PersonType.Guest;
-        }
-
-        if (text.Contains("職", StringComparison.Ordinal) || text.Equals("staff", StringComparison.OrdinalIgnoreCase))
-        {
-            return PersonType.Staff;
-        }
-
-        return PersonType.Student;
     }
 
     private static string NormalizeHeader(string value)
