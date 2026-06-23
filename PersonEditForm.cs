@@ -1,0 +1,151 @@
+namespace KyushokuKanriSystem;
+
+public sealed class PersonEditForm : Form
+{
+    private readonly ComboBox _type = new();
+    private readonly TextBox _grade = new();
+    private readonly TextBox _className = new();
+    private readonly TextBox _studentNumber = new();
+    private readonly TextBox _lastName = new();
+    private readonly TextBox _firstName = new();
+    private readonly DateTimePicker _activeFrom = new();
+    private readonly CheckBox _hasActiveTo = new();
+    private readonly DateTimePicker _activeTo = new();
+    private readonly TextBox _memo = new();
+
+    public Person Person { get; private set; }
+
+    public PersonEditForm(Person? person = null)
+    {
+        Person = person is null ? new Person() : new Person
+        {
+            Id = person.Id,
+            Type = person.Type,
+            Grade = person.Grade,
+            ClassName = person.ClassName,
+            StudentNumber = person.StudentNumber,
+            LastName = person.LastName,
+            FirstName = person.FirstName,
+            Name = person.FullName,
+            ActiveFrom = person.ActiveFrom,
+            ActiveTo = person.ActiveTo,
+            Memo = person.Memo
+        };
+
+        Text = person is null ? "1人追加" : "編集";
+        Width = 440;
+        Height = 500;
+        StartPosition = FormStartPosition.CenterParent;
+        FormBorderStyle = FormBorderStyle.FixedDialog;
+        MaximizeBox = false;
+        MinimizeBox = false;
+
+        Controls.Add(CreateLayout());
+        LoadPerson();
+    }
+
+    private Control CreateLayout()
+    {
+        var panel = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 2,
+            RowCount = 10,
+            Padding = new Padding(16)
+        };
+        panel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 90));
+        panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+
+        _type.DropDownStyle = ComboBoxStyle.DropDownList;
+        _type.Items.AddRange(["生徒", "職員"]);
+        _activeFrom.Format = DateTimePickerFormat.Short;
+        _activeTo.Format = DateTimePickerFormat.Short;
+        _activeTo.Enabled = false;
+        _hasActiveTo.CheckedChanged += (_, _) => _activeTo.Enabled = _hasActiveTo.Checked;
+
+        AddRow(panel, 0, "区分", _type);
+        AddRow(panel, 1, "番号", _studentNumber);
+        AddRow(panel, 2, "学年", _grade);
+        AddRow(panel, 3, "組", _className);
+        AddRow(panel, 4, "姓", _lastName);
+        AddRow(panel, 5, "名", _firstName);
+        AddRow(panel, 6, "開始日", _activeFrom);
+        AddRow(panel, 7, "終了日", CreateEndDatePanel());
+        AddRow(panel, 8, "備考", _memo);
+
+        var buttons = new FlowLayoutPanel
+        {
+            FlowDirection = FlowDirection.RightToLeft,
+            Dock = DockStyle.Fill,
+            AutoSize = true
+        };
+        var ok = new Button { Text = "OK", DialogResult = DialogResult.OK, AutoSize = true };
+        var cancel = new Button { Text = "キャンセル", DialogResult = DialogResult.Cancel, AutoSize = true };
+        ok.Click += (_, e) =>
+        {
+            if (!Apply())
+            {
+                DialogResult = DialogResult.None;
+            }
+        };
+        buttons.Controls.Add(ok);
+        buttons.Controls.Add(cancel);
+        panel.Controls.Add(buttons, 0, 9);
+        panel.SetColumnSpan(buttons, 2);
+
+        AcceptButton = ok;
+        CancelButton = cancel;
+        return panel;
+    }
+
+    private Control CreateEndDatePanel()
+    {
+        var panel = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, WrapContents = false };
+        panel.Controls.Add(_hasActiveTo);
+        panel.Controls.Add(_activeTo);
+        return panel;
+    }
+
+    private static void AddRow(TableLayoutPanel panel, int row, string labelText, Control input)
+    {
+        panel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        panel.Controls.Add(new Label { Text = labelText, AutoSize = true, Padding = new Padding(0, 7, 0, 0) }, 0, row);
+        input.Dock = DockStyle.Fill;
+        panel.Controls.Add(input, 1, row);
+    }
+
+    private void LoadPerson()
+    {
+        _type.SelectedIndex = Person.Type == PersonType.Student ? 0 : 1;
+        _grade.Text = Person.Grade;
+        _className.Text = Person.ClassName;
+        _studentNumber.Text = Person.StudentNumber;
+        _lastName.Text = Person.LastName;
+        _firstName.Text = Person.FirstName;
+        _activeFrom.Value = Person.ActiveFrom;
+        _hasActiveTo.Checked = Person.ActiveTo is not null;
+        _activeTo.Value = Person.ActiveTo ?? DateTime.Today;
+        _memo.Text = Person.Memo;
+    }
+
+    private bool Apply()
+    {
+        if (string.IsNullOrWhiteSpace(_lastName.Text + _firstName.Text))
+        {
+            MessageBox.Show("姓または名を入力してください。");
+            return false;
+        }
+
+        Person.Type = _type.SelectedIndex == 1 ? PersonType.Staff : PersonType.Student;
+        Person.Grade = _grade.Text.Trim();
+        Person.ClassName = _className.Text.Trim();
+        Person.StudentNumber = _studentNumber.Text.Trim();
+        Person.LastName = _lastName.Text.Trim();
+        Person.FirstName = _firstName.Text.Trim();
+        Person.Name = $"{Person.LastName} {Person.FirstName}".Trim();
+        Person.ActiveFrom = _activeFrom.Value.Date;
+        Person.ActiveTo = _hasActiveTo.Checked ? _activeTo.Value.Date : null;
+        Person.Memo = _memo.Text.Trim();
+        return true;
+    }
+}
