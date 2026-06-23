@@ -120,8 +120,8 @@ public sealed class PersonEditForm : Form
         var group = CreateGroup("配膳・食事設定");
         var panel = CreateGrid(3);
 
-        ConfigureDeliveryPlaceCombo(_deliveryPlace1, _deliveryPlaces);
-        ConfigureDeliveryPlaceCombo(_deliveryPlace2, _deliveryPlaces);
+        ConfigureDeliveryPlaceCombo(_deliveryPlace1, _deliveryPlaces, allowBlank: false);
+        ConfigureDeliveryPlaceCombo(_deliveryPlace2, _deliveryPlaces, allowBlank: true);
 
         AddRow(panel, 0, "配膳場所1", _deliveryPlace1);
         AddRow(panel, 1, "配膳場所2", _deliveryPlace2);
@@ -227,9 +227,14 @@ public sealed class PersonEditForm : Form
         return panel;
     }
 
-    private static void ConfigureDeliveryPlaceCombo(ComboBox comboBox, IReadOnlyCollection<string> deliveryPlaces)
+    private static void ConfigureDeliveryPlaceCombo(ComboBox comboBox, IReadOnlyCollection<string> deliveryPlaces, bool allowBlank)
     {
         comboBox.DropDownStyle = ComboBoxStyle.DropDownList;
+        if (allowBlank)
+        {
+            comboBox.Items.Add("");
+        }
+
         comboBox.Items.AddRange(deliveryPlaces.OrderBy(place => place).Cast<object>().ToArray());
     }
 
@@ -288,9 +293,9 @@ public sealed class PersonEditForm : Form
             return false;
         }
 
-        if (string.IsNullOrWhiteSpace(_deliveryPlace1.Text) || string.IsNullOrWhiteSpace(_deliveryPlace2.Text))
+        if (string.IsNullOrWhiteSpace(_deliveryPlace1.Text))
         {
-            MessageBox.Show("配膳場所1と配膳場所2を選択してください。");
+            MessageBox.Show("配膳場所1を選択してください。");
             return false;
         }
 
