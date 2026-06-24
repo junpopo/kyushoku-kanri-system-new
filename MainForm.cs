@@ -167,43 +167,13 @@ public sealed class MainForm : Form
         top.Controls.Add(_mealMonthPicker);
         top.Controls.Add(CreateButton("更新", RefreshMonthly));
 
-        ConfigureMonthlyGrid();
-        _monthlyDetailLabel.AutoSize = true;
-        _monthlyDetailLabel.Font = new Font(Font, FontStyle.Bold);
-        _monthlyDetailLabel.Padding = new Padding(4, 5, 0, 3);
         _monthlyTotalLabel.AutoSize = true;
         _monthlyTotalLabel.Padding = new Padding(4, 8, 0, 0);
 
-        var calendarLayout = new TableLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            ColumnCount = 1,
-            RowCount = 3,
-            Padding = new Padding(4)
-        };
-        calendarLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 62));
-        calendarLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        calendarLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 38));
-        calendarLayout.Controls.Add(_monthlyCalendar, 0, 0);
-        calendarLayout.Controls.Add(_monthlyDetailLabel, 0, 1);
-        calendarLayout.Controls.Add(_monthlyGrid, 0, 2);
-
         ConfigureMonthlyMatrixGrid();
-        var views = new TabControl { Dock = DockStyle.Fill };
-        var calendarPage = new TabPage("カレンダー");
-        calendarPage.Controls.Add(calendarLayout);
-        var matrixPage = new TabPage("月間一覧");
-        matrixPage.Controls.Add(_monthlyMatrixGrid);
-        views.TabPages.Add(calendarPage);
-        views.TabPages.Add(matrixPage);
-        ConfigureColoredTabs(views,
-        [
-            Color.FromArgb(222, 241, 255),
-            Color.FromArgb(255, 232, 190)
-        ]);
 
         panel.Controls.Add(top, 0, 0);
-        panel.Controls.Add(views, 0, 1);
+        panel.Controls.Add(_monthlyMatrixGrid, 0, 1);
         panel.Controls.Add(_monthlyTotalLabel, 0, 2);
         page.Controls.Add(panel);
         return page;
@@ -587,13 +557,6 @@ public sealed class MainForm : Form
             }
         }
 
-        if (_selectedMonthlyDate.Year != month.Year || _selectedMonthlyDate.Month != month.Month)
-        {
-            _selectedMonthlyDate = month;
-        }
-
-        BuildMonthlyCalendar(month);
-        ShowMonthlyDetails(_selectedMonthlyDate);
         RefreshMonthlyMatrix(month);
 
         var served = _monthlyAllRows.Sum(row => row.Served);
