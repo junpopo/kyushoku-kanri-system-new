@@ -523,10 +523,9 @@ public sealed class MainForm : Form
     private int CountServed(DateTime date, IReadOnlyCollection<Person> people)
     {
         return people.Count(person =>
-        {
-            var record = _data.MealRecords.FirstOrDefault(r => r.PersonId == person.Id && r.Date.Date == date.Date);
-            return record is null || record.Status == MealStatus.Serve;
-        });
+            person.ActiveFrom.Date <= date.Date &&
+            (person.ActiveTo is null || person.ActiveTo.Value.Date >= date.Date) &&
+            GetMealStatus(person, date) == MealStatus.Serve);
     }
 
     private void ImportRoster()
