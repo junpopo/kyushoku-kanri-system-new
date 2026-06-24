@@ -40,9 +40,9 @@ public sealed class PersonEditForm : Form
         Person = person is null ? new Person() : ClonePerson(person);
 
         Text = person is null ? "1人追加" : "編集";
-        Width = 560;
-        Height = 720;
-        MinimumSize = new Size(520, 640);
+        Width = 640;
+        Height = 640;
+        MinimumSize = new Size(600, 600);
         StartPosition = FormStartPosition.CenterParent;
         FormBorderStyle = FormBorderStyle.Sizable;
 
@@ -93,7 +93,7 @@ public sealed class PersonEditForm : Form
             Dock = DockStyle.Fill,
             ColumnCount = 1,
             RowCount = 5,
-            Padding = new Padding(16)
+            Padding = new Padding(10)
         };
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -112,17 +112,41 @@ public sealed class PersonEditForm : Form
     private GroupBox CreateBasicSection()
     {
         var group = CreateGroup("基本情報");
-        var panel = CreateGrid();
+        var panel = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            AutoSize = true,
+            ColumnCount = 6,
+            RowCount = 3,
+            Padding = new Padding(0, 2, 0, 0)
+        };
+        panel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 55));
+        panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 34));
+        panel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 35));
+        panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33));
+        panel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 45));
+        panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33));
 
         _type.DropDownStyle = ComboBoxStyle.DropDownList;
         _type.Items.AddRange(TypeOptions.Select(option => option.Label).ToArray());
 
-        AddRow(panel, 0, "区分", _type);
-        AddRow(panel, 1, "学年", _grade);
-        AddRow(panel, 2, "組", _className);
-        AddRow(panel, 3, "番号", _studentNumber);
-        AddRow(panel, 4, "姓", _lastName);
-        AddRow(panel, 5, "名", _firstName);
+        AddCompactLabel(panel, "区分", 0, 0);
+        AddCompactInput(panel, _type, 1, 0);
+        panel.SetColumnSpan(_type, 5);
+
+        AddCompactLabel(panel, "学年", 0, 1);
+        AddCompactInput(panel, _grade, 1, 1);
+        AddCompactLabel(panel, "組", 2, 1);
+        AddCompactInput(panel, _className, 3, 1);
+        AddCompactLabel(panel, "番号", 4, 1);
+        AddCompactInput(panel, _studentNumber, 5, 1);
+
+        AddCompactLabel(panel, "姓", 0, 2);
+        AddCompactInput(panel, _lastName, 1, 2);
+        panel.SetColumnSpan(_lastName, 2);
+        AddCompactLabel(panel, "名", 3, 2);
+        AddCompactInput(panel, _firstName, 4, 2);
+        panel.SetColumnSpan(_firstName, 2);
 
         group.Controls.Add(panel);
         return group;
@@ -190,8 +214,12 @@ public sealed class PersonEditForm : Form
     private GroupBox CreateMemoSection()
     {
         var group = CreateGroup("備考");
+        group.AutoSize = false;
+        group.MinimumSize = new Size(0, 105);
         _memo.Dock = DockStyle.Fill;
         _memo.Multiline = true;
+        _memo.AcceptsReturn = true;
+        _memo.WordWrap = true;
         _memo.ScrollBars = ScrollBars.Vertical;
         group.Controls.Add(_memo);
         return group;
@@ -229,8 +257,8 @@ public sealed class PersonEditForm : Form
             Text = text,
             Dock = DockStyle.Fill,
             AutoSize = true,
-            Padding = new Padding(12),
-            Margin = new Padding(0, 0, 0, 12)
+            Padding = new Padding(9),
+            Margin = new Padding(0, 0, 0, 7)
         };
     }
 
@@ -243,7 +271,7 @@ public sealed class PersonEditForm : Form
             ColumnCount = 2,
             Padding = new Padding(0, 4, 0, 0)
         };
-        panel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 125));
+        panel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 115));
         panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         return panel;
     }
@@ -272,10 +300,28 @@ public sealed class PersonEditForm : Form
     private static void AddRow(TableLayoutPanel panel, int row, string labelText, Control input)
     {
         panel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        panel.Controls.Add(new Label { Text = labelText, AutoSize = true, Padding = new Padding(0, 8, 0, 0) }, 0, row);
+        panel.Controls.Add(new Label { Text = labelText, AutoSize = true, Padding = new Padding(0, 6, 0, 0) }, 0, row);
         input.Dock = DockStyle.Fill;
-        input.Margin = new Padding(0, 2, 0, 6);
+        input.Margin = new Padding(0, 1, 0, 4);
         panel.Controls.Add(input, 1, row);
+    }
+
+    private static void AddCompactLabel(TableLayoutPanel panel, string text, int column, int row)
+    {
+        panel.Controls.Add(new Label
+        {
+            Text = text,
+            AutoSize = true,
+            Anchor = AnchorStyles.Left,
+            Margin = new Padding(0, 5, 4, 3)
+        }, column, row);
+    }
+
+    private static void AddCompactInput(TableLayoutPanel panel, Control input, int column, int row)
+    {
+        input.Dock = DockStyle.Fill;
+        input.Margin = new Padding(0, 1, 8, 4);
+        panel.Controls.Add(input, column, row);
     }
 
     private void LoadPerson()
