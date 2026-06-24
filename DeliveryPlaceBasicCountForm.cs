@@ -73,7 +73,7 @@ public sealed class DeliveryPlaceBasicCountForm : Form
         };
         tools.Controls.Add(new Label
         {
-            Text = $"年度: {_loadedFiscalYear}年度（変更不可）",
+            Text = $"年度: {_loadedFiscalYear}年度",
             AutoSize = true,
             Padding = new Padding(0, 7, 12, 0),
             Font = new Font(Font, FontStyle.Bold)
