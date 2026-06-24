@@ -4,10 +4,14 @@ namespace KyushokuKanriSystem;
 
 public sealed class DeliveryPlaceBasicCountForm : Form
 {
-    private readonly BindingList<DeliveryPlaceBasicCount> _rows;
+    private readonly List<DeliveryPlaceBasicCount> _allCounts;
     private readonly IReadOnlyCollection<string> _deliveryPlaces;
     private readonly IReadOnlyCollection<Person> _people;
+    private readonly BindingList<DeliveryPlaceBasicCount> _rows = [];
     private readonly DataGridView _grid = new();
+    private readonly NumericUpDown _fiscalYear = new();
+    private int _loadedFiscalYear;
+    private bool _loadingYear;
 
     public List<DeliveryPlaceBasicCount> DeliveryPlaceBasicCounts { get; private set; } = [];
 
@@ -18,26 +22,31 @@ public sealed class DeliveryPlaceBasicCountForm : Form
     {
         _deliveryPlaces = deliveryPlaces;
         _people = people;
-        _rows = new BindingList<DeliveryPlaceBasicCount>(basicCounts
-            .Select(item => new DeliveryPlaceBasicCount
+        _loadedFiscalYear = CurrentFiscalYear();
+        _allCounts = basicCounts.Select(item =>
+        {
+            if (item.FiscalYear != 0)
             {
-                DeliveryPlace = item.DeliveryPlace,
-                BasicCount = item.BasicCount
-            })
-            .OrderBy(item => item.DeliveryPlace)
-            .ToList());
+                return Clone(item);
+            }
 
-        Text = "配膳別基本数";
-        Width = 520;
-        Height = 500;
-        MinimumSize = new Size(460, 380);
+            return CreateForecastRow(
+                _loadedFiscalYear,
+                item.DeliveryPlace,
+                item.BasicCount);
+        }).ToList();
+
+        Text = "配膳別基本数（月別）";
+        Width = 1120;
+        Height = 540;
+        MinimumSize = new Size(900, 420);
         StartPosition = FormStartPosition.CenterParent;
         FormBorderStyle = FormBorderStyle.Sizable;
-        MaximizeBox = false;
+        MaximizeBox = true;
         MinimizeBox = false;
 
         Controls.Add(CreateLayout());
-        AddDeliveryPlaces();
+        LoadFiscalYear(_loadedFiscalYear);
     }
 
     private Control CreateLayout()
@@ -59,7 +68,36 @@ public sealed class DeliveryPlaceBasicCountForm : Form
             AutoSize = true,
             WrapContents = false
         };
-        tools.Controls.Add(CreateButton("配膳場所を追加", AddDeliveryPlaces));
+        tools.Controls.Add(new Label
+        {
+            Text = "年度",
+            AutoSize = true,
+            Padding = new Padding(0, 7, 4, 0)
+        });
+        _fiscalYear.Minimum = 2000;
+        _fiscalYear.Maximum = 2100;
+        _fiscalYear.Value = _loadedFiscalYear;
+        _fiscalYear.Width = 75;
+        _fiscalYear.ValueChanged += (_, _) =>
+        {
+            if (_loadingYear)
+            {
+                return;
+            }
+
+            if (!StoreCurrentYear())
+            {
+                _loadingYear = true;
+                _fiscalYear.Value = _loadedFiscalYear;
+                _loadingYear = false;
+                return;
+            }
+
+            LoadFiscalYear((int)_fiscalYear.Value);
+        };
+        tools.Controls.Add(_fiscalYear);
+        tools.Controls.Add(CreateButton("4月名簿から12か月作成", CreateForecastFromAprilRoster));
+        tools.Controls.Add(CreateButton("配膳場所を追加", AddMissingDeliveryPlaces));
         tools.Controls.Add(CreateButton("選択行を削除", DeleteSelectedRow));
 
         ConfigureGrid();
@@ -89,7 +127,6 @@ public sealed class DeliveryPlaceBasicCountForm : Form
 
         AcceptButton = save;
         CancelButton = cancel;
-
         root.Controls.Add(tools, 0, 0);
         root.Controls.Add(_grid, 0, 1);
         root.Controls.Add(closeButtons, 0, 2);
@@ -105,19 +142,26 @@ public sealed class DeliveryPlaceBasicCountForm : Form
         _grid.RowHeadersVisible = false;
         _grid.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
         _grid.MultiSelect = false;
-        _grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+        _grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
         _grid.Columns.Add(new DataGridViewTextBoxColumn
         {
             HeaderText = "配膳場所",
             DataPropertyName = nameof(DeliveryPlaceBasicCount.DeliveryPlace),
-            FillWeight = 180
+            Width = 145,
+            Frozen = true
         });
-        _grid.Columns.Add(new DataGridViewTextBoxColumn
-        {
-            HeaderText = "基本数",
-            DataPropertyName = nameof(DeliveryPlaceBasicCount.BasicCount),
-            FillWeight = 80
-        });
+        AddMonthColumn("4月", nameof(DeliveryPlaceBasicCount.April));
+        AddMonthColumn("5月", nameof(DeliveryPlaceBasicCount.May));
+        AddMonthColumn("6月", nameof(DeliveryPlaceBasicCount.June));
+        AddMonthColumn("7月", nameof(DeliveryPlaceBasicCount.July));
+        AddMonthColumn("8月", nameof(DeliveryPlaceBasicCount.August));
+        AddMonthColumn("9月", nameof(DeliveryPlaceBasicCount.September));
+        AddMonthColumn("10月", nameof(DeliveryPlaceBasicCount.October));
+        AddMonthColumn("11月", nameof(DeliveryPlaceBasicCount.November));
+        AddMonthColumn("12月", nameof(DeliveryPlaceBasicCount.December));
+        AddMonthColumn("1月", nameof(DeliveryPlaceBasicCount.January));
+        AddMonthColumn("2月", nameof(DeliveryPlaceBasicCount.February));
+        AddMonthColumn("3月", nameof(DeliveryPlaceBasicCount.March));
         _grid.DataSource = _rows;
         _grid.DataError += (_, eventArgs) =>
         {
@@ -127,31 +171,91 @@ public sealed class DeliveryPlaceBasicCountForm : Form
         };
     }
 
+    private void AddMonthColumn(string header, string propertyName)
+    {
+        _grid.Columns.Add(new DataGridViewTextBoxColumn
+        {
+            HeaderText = header,
+            DataPropertyName = propertyName,
+            Width = 65,
+            DefaultCellStyle = new DataGridViewCellStyle
+            {
+                Alignment = DataGridViewContentAlignment.MiddleRight,
+                Format = "N0"
+            }
+        });
+    }
+
     private static Button CreateButton(string text, Action action)
     {
         var button = new Button
         {
             Text = text,
             AutoSize = true,
-            Margin = new Padding(0, 0, 8, 8),
+            Margin = new Padding(8, 0, 0, 8),
             Padding = new Padding(10, 5, 10, 5)
         };
         button.Click += (_, _) => action();
         return button;
     }
 
-    private void AddDeliveryPlaces()
+    private void LoadFiscalYear(int fiscalYear)
+    {
+        _loadedFiscalYear = fiscalYear;
+        _rows.Clear();
+        foreach (var item in _allCounts
+            .Where(item => item.FiscalYear == fiscalYear)
+            .OrderBy(item => item.DeliveryPlace))
+        {
+            _rows.Add(Clone(item));
+        }
+
+        if (_rows.Count == 0)
+        {
+            CreateForecastFromAprilRoster();
+        }
+        else
+        {
+            AddMissingDeliveryPlaces();
+        }
+    }
+
+    private void CreateForecastFromAprilRoster()
     {
         _grid.EndEdit();
-        var today = DateTime.Today;
-        var places = _deliveryPlaces
-            .Concat(_people.Select(person => person.GetDeliveryPlace(today)))
-            .Where(place => !string.IsNullOrWhiteSpace(place))
-            .Select(place => place.Trim())
-            .Distinct(StringComparer.CurrentCultureIgnoreCase)
-            .OrderBy(place => place);
+        var fiscalYear = (int)_fiscalYear.Value;
+        var aprilDate = new DateTime(fiscalYear, 4, 1);
+        var counts = _people
+            .Where(person => IsActive(person, aprilDate))
+            .GroupBy(person => NormalizePlace(person.GetDeliveryPlace(aprilDate)))
+            .ToDictionary(
+                group => group.Key,
+                group => group.Count(),
+                StringComparer.CurrentCultureIgnoreCase);
+        var places = KnownPlaces(aprilDate).ToList();
 
+        _rows.Clear();
         foreach (var place in places)
+        {
+            var aprilCount = counts.GetValueOrDefault(place);
+            _rows.Add(CreateForecastRow(fiscalYear, place, aprilCount));
+        }
+    }
+
+    private void AddMissingDeliveryPlaces()
+    {
+        _grid.EndEdit();
+        var fiscalYear = (int)_fiscalYear.Value;
+        var aprilDate = new DateTime(fiscalYear, 4, 1);
+        var counts = _people
+            .Where(person => IsActive(person, aprilDate))
+            .GroupBy(person => NormalizePlace(person.GetDeliveryPlace(aprilDate)))
+            .ToDictionary(
+                group => group.Key,
+                group => group.Count(),
+                StringComparer.CurrentCultureIgnoreCase);
+
+        foreach (var place in KnownPlaces(aprilDate))
         {
             if (_rows.Any(item =>
                 item.DeliveryPlace.Trim().Equals(place, StringComparison.CurrentCultureIgnoreCase)))
@@ -159,16 +263,18 @@ public sealed class DeliveryPlaceBasicCountForm : Form
                 continue;
             }
 
-            _rows.Add(new DeliveryPlaceBasicCount
-            {
-                DeliveryPlace = place,
-                BasicCount = _people.Count(person =>
-                    person.ActiveFrom.Date <= today &&
-                    (person.ActiveTo is null || person.ActiveTo.Value.Date >= today) &&
-                    person.GetDeliveryPlace(today).Trim()
-                        .Equals(place, StringComparison.CurrentCultureIgnoreCase))
-            });
+            _rows.Add(CreateForecastRow(fiscalYear, place, counts.GetValueOrDefault(place)));
         }
+    }
+
+    private IEnumerable<string> KnownPlaces(DateTime aprilDate)
+    {
+        return _deliveryPlaces
+            .Concat(_people.Select(person => person.GetDeliveryPlace(aprilDate)))
+            .Where(place => !string.IsNullOrWhiteSpace(place))
+            .Select(NormalizePlace)
+            .Distinct(StringComparer.CurrentCultureIgnoreCase)
+            .OrderBy(place => place);
     }
 
     private void DeleteSelectedRow()
@@ -182,27 +288,29 @@ public sealed class DeliveryPlaceBasicCountForm : Form
         _rows.Remove(selected);
     }
 
-    private void SaveAndClose()
+    private bool StoreCurrentYear()
     {
         if (!_grid.EndEdit())
         {
-            return;
+            return false;
         }
 
         var normalized = _rows
             .Where(item => !string.IsNullOrWhiteSpace(item.DeliveryPlace))
-            .Select(item => new DeliveryPlaceBasicCount
+            .Select(item =>
             {
-                DeliveryPlace = item.DeliveryPlace.Trim(),
-                BasicCount = item.BasicCount
+                var copy = Clone(item);
+                copy.FiscalYear = _loadedFiscalYear;
+                copy.DeliveryPlace = copy.DeliveryPlace.Trim();
+                return copy;
             })
             .ToList();
 
-        if (normalized.Any(item => item.BasicCount < 0))
+        if (normalized.Any(HasNegativeCount))
         {
             MessageBox.Show("基本数には0以上の整数を入力してください。", "入力確認",
                 MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            return;
+            return false;
         }
 
         var duplicate = normalized
@@ -212,13 +320,97 @@ public sealed class DeliveryPlaceBasicCountForm : Form
         {
             MessageBox.Show($"{duplicate.Key}が重複しています。", "入力確認",
                 MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return false;
+        }
+
+        _allCounts.RemoveAll(item => item.FiscalYear == _loadedFiscalYear);
+        _allCounts.AddRange(normalized);
+        return true;
+    }
+
+    private void SaveAndClose()
+    {
+        if (!StoreCurrentYear())
+        {
             return;
         }
 
-        DeliveryPlaceBasicCounts = normalized
-            .OrderBy(item => item.DeliveryPlace)
+        DeliveryPlaceBasicCounts = _allCounts
+            .OrderBy(item => item.FiscalYear)
+            .ThenBy(item => item.DeliveryPlace)
+            .Select(Clone)
             .ToList();
         DialogResult = DialogResult.OK;
         Close();
+    }
+
+    private static DeliveryPlaceBasicCount CreateForecastRow(
+        int fiscalYear,
+        string deliveryPlace,
+        int count)
+    {
+        return new DeliveryPlaceBasicCount
+        {
+            FiscalYear = fiscalYear,
+            DeliveryPlace = deliveryPlace,
+            April = count,
+            May = count,
+            June = count,
+            July = count,
+            August = count,
+            September = count,
+            October = count,
+            November = count,
+            December = count,
+            January = count,
+            February = count,
+            March = count
+        };
+    }
+
+    private static DeliveryPlaceBasicCount Clone(DeliveryPlaceBasicCount item)
+    {
+        return new DeliveryPlaceBasicCount
+        {
+            FiscalYear = item.FiscalYear,
+            DeliveryPlace = item.DeliveryPlace,
+            April = item.April,
+            May = item.May,
+            June = item.June,
+            July = item.July,
+            August = item.August,
+            September = item.September,
+            October = item.October,
+            November = item.November,
+            December = item.December,
+            January = item.January,
+            February = item.February,
+            March = item.March
+        };
+    }
+
+    private static bool HasNegativeCount(DeliveryPlaceBasicCount item)
+    {
+        return item.April < 0 || item.May < 0 || item.June < 0 ||
+               item.July < 0 || item.August < 0 || item.September < 0 ||
+               item.October < 0 || item.November < 0 || item.December < 0 ||
+               item.January < 0 || item.February < 0 || item.March < 0;
+    }
+
+    private static bool IsActive(Person person, DateTime date)
+    {
+        return person.ActiveFrom.Date <= date.Date &&
+               (person.ActiveTo is null || person.ActiveTo.Value.Date >= date.Date);
+    }
+
+    private static string NormalizePlace(string place)
+    {
+        return string.IsNullOrWhiteSpace(place) ? "未設定" : place.Trim();
+    }
+
+    private static int CurrentFiscalYear()
+    {
+        var today = DateTime.Today;
+        return today.Month >= 4 ? today.Year : today.Year - 1;
     }
 }
