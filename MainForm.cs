@@ -692,6 +692,26 @@ public sealed class MainForm : Form
             StyleMonthlyMatrixRow(matrixRow, month, daysInMonth, false);
         }
 
+        AddMonthlyMatrixSummaryRow("生徒合計", month, daysInMonth,
+            date => CountMeals(date, person => person.Type == PersonType.Student),
+            Color.FromArgb(224, 239, 252));
+        AddMonthlyMatrixSummaryRow("職員室の職員", month, daysInMonth,
+            date => CountMeals(date, person =>
+                person.Type == PersonType.Staff &&
+                IsStaffRoom(person.GetDeliveryPlace(date))),
+            Color.FromArgb(232, 241, 250));
+        AddMonthlyMatrixSummaryRow("その他の職員", month, daysInMonth,
+            date => CountMeals(date, person =>
+                person.Type == PersonType.Staff &&
+                !IsStaffRoom(person.GetDeliveryPlace(date))),
+            Color.FromArgb(238, 238, 248));
+        AddMonthlyMatrixSummaryRow("試食会 食数", month, daysInMonth,
+            date => CountMeals(date, person => person.Type == PersonType.Tasting),
+            Color.FromArgb(255, 235, 213));
+        AddMonthlyMatrixSummaryRow("試食会 牛乳", month, daysInMonth,
+            date => CountMeals(date, person =>
+                person.Type == PersonType.Tasting && person.HasMilk),
+            Color.FromArgb(255, 245, 220));
         AddMonthlyMatrixSummaryRow("給食合計", month, daysInMonth,
             date => CountServed(date, _data.People), Color.FromArgb(224, 239, 252));
         AddMonthlyMatrixSummaryRow("牛乳注文数", month, daysInMonth,
@@ -708,6 +728,20 @@ public sealed class MainForm : Form
             Color.FromArgb(255, 239, 220));
 
         _monthlyMatrixGrid.ResumeLayout();
+    }
+
+    private int CountMeals(DateTime date, Func<Person, bool> predicate)
+    {
+        return _data.People.Count(person =>
+            predicate(person) &&
+            IsActive(person, date) &&
+            GetMealStatus(person, date) == MealStatus.Serve);
+    }
+
+    private static bool IsStaffRoom(string deliveryPlace)
+    {
+        return NormalizeDeliveryPlace(deliveryPlace)
+            .Equals("職員室", StringComparison.CurrentCultureIgnoreCase);
     }
 
     private void AddMonthlyMatrixSummaryRow(
