@@ -701,7 +701,7 @@ public sealed class MainForm : Form
                 person.Type == PersonType.Staff &&
                 IsStaffRoom(person.GetDeliveryPlace(date))),
             Color.FromArgb(232, 241, 250));
-        AddMonthlyMatrixSummaryRow("職員", month, daysInMonth,
+        AddMonthlyMatrixSummaryRow("教室職員合計", month, daysInMonth,
             date => CountMeals(date, person =>
                 person.Type != PersonType.Student &&
                 person.Type != PersonType.Tasting),
