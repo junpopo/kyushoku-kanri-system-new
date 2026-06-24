@@ -488,7 +488,7 @@ public sealed class MainForm : Form
             }
 
             var tag = _monthlyMatrixGrid.Rows[eventArgs.RowIndex].Tag;
-            if (tag is MonthlyMatrixRowTag rowTag && IsStaffRoom(rowTag.DeliveryPlace))
+            if (tag is MonthlyMatrixRowTag rowTag)
             {
                 ShowServedPeopleDetails(date, rowTag.DeliveryPlace, rowTag.Type);
             }
@@ -774,7 +774,10 @@ public sealed class MainForm : Form
             .Where(person =>
                 person.Type == personType &&
                 IsActive(person, date) &&
-                IsStaffRoom(person.GetDeliveryPlace(date)) &&
+                NormalizeDeliveryPlace(person.GetDeliveryPlace(date))
+                    .Equals(
+                        NormalizeDeliveryPlace(deliveryPlace),
+                        StringComparison.CurrentCultureIgnoreCase) &&
                 GetMealStatus(person, date) == MealStatus.Serve)
             .OrderBy(person => person.Type)
             .ThenBy(person => person.LastName)
