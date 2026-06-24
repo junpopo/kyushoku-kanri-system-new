@@ -311,7 +311,7 @@ public sealed class MainForm : Form
         _summaryGrid.Columns.Clear();
         _summaryGrid.Columns.Add(new DataGridViewTextBoxColumn
         {
-            HeaderText = "グループ",
+            HeaderText = "配膳場所",
             DataPropertyName = nameof(SummaryRow.Group),
             FillWeight = 160
         });
@@ -955,9 +955,11 @@ public sealed class MainForm : Form
     private void RefreshSummary()
     {
         _summaryRows.Clear();
+        var today = DateTime.Today;
         var groups = _data.People
-            .GroupBy(p => p.GroupLabel)
-            .OrderBy(g => g.Key);
+            .GroupBy(person => NormalizeDeliveryPlace(person.GetDeliveryPlace(today)))
+            .OrderBy(group => DeliveryPlaceSortKey(group.Key))
+            .ThenBy(group => group.Key);
 
         foreach (var group in groups)
         {
@@ -966,8 +968,8 @@ public sealed class MainForm : Form
             {
                 Group = group.Key,
                 Registered = people.Count,
-                ActiveToday = people.Count(p => p.ActiveFrom.Date <= DateTime.Today && (p.ActiveTo is null || p.ActiveTo.Value.Date >= DateTime.Today)),
-                ServedToday = CountServed(DateTime.Today, people)
+                ActiveToday = people.Count(person => IsActive(person, today)),
+                ServedToday = CountServed(today, people)
             });
         }
     }
