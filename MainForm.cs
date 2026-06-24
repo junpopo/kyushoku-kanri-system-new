@@ -644,22 +644,38 @@ public sealed class MainForm : Form
         });
 
         var groups = _data.People
-            .GroupBy(person => person.GroupLabel)
-            .OrderBy(group => GroupSortKey(group.First()))
-            .ThenBy(group => group.Key)
+            .SelectMany(person => Enumerable.Range(0, daysInMonth)
+                .Select(offset => month.AddDays(offset))
+                .Where(date => IsActive(person, date))
+                .Select(date => new
+                {
+                    Person = person,
+                    DeliveryPlace = NormalizeDeliveryPlace(person.GetDeliveryPlace(date))
+                }))
+            .GroupBy(item => new { item.DeliveryPlace, item.Person.Type })
+            .OrderBy(group => DeliveryPlaceSortKey(group.Key.DeliveryPlace))
+            .ThenBy(group => group.Key.DeliveryPlace)
+            .ThenBy(group => (int)group.Key.Type)
             .ToList();
 
         foreach (var group in groups)
         {
             var values = new object[daysInMonth + 3];
-            var firstPerson = group.First();
-            values[0] = firstPerson.Type == PersonType.Student ? group.Key : "";
-            values[1] = firstPerson.Type == PersonType.Student ? "生徒" : firstPerson.TypeLabel;
+            var people = group
+                .Select(item => item.Person)
+                .DistinctBy(person => person.Id)
+                .ToList();
+            var firstPerson = people[0];
+            values[0] = group.Key.DeliveryPlace;
+            values[1] = firstPerson.TypeLabel;
             var monthTotal = 0;
             for (var day = 1; day <= daysInMonth; day++)
             {
                 var date = new DateTime(month.Year, month.Month, day);
-                var count = CountServed(date, group.ToList());
+                var count = people.Count(person =>
+                    IsActive(person, date) &&
+                    NormalizeDeliveryPlace(person.GetDeliveryPlace(date)) == group.Key.DeliveryPlace &&
+                    GetMealStatus(person, date) == MealStatus.Serve);
                 values[day + 1] = count;
                 monthTotal += count;
             }
@@ -749,11 +765,14 @@ public sealed class MainForm : Form
                (person.ActiveTo is null || person.ActiveTo.Value.Date >= date.Date);
     }
 
-    private static int GroupSortKey(Person person)
+    private static int DeliveryPlaceSortKey(string deliveryPlace)
     {
-        return person.Type == PersonType.Student
-            ? ToNumber(person.Grade) * 100 + ToNumber(person.ClassName)
-            : 10000 + (int)person.Type;
+        var match = System.Text.RegularExpressions.Regex.Match(
+            deliveryPlace,
+            @"(?<grade>\d+)年(?<class>\d+)組");
+        return match.Success
+            ? int.Parse(match.Groups["grade"].Value) * 100 + int.Parse(match.Groups["class"].Value)
+            : 10000;
     }
 
     private void BuildMonthlyCalendar(DateTime month)
