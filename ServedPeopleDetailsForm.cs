@@ -71,11 +71,11 @@ public sealed class ServedPeopleDetailsForm : Form
                 return;
             }
 
-            using var dialog = new PersonMonthlyMealMatrixForm(
+            var dialog = new PersonMonthlyMealMatrixForm(
                 new DateTime(date.Year, date.Month, 1),
                 selected.Person,
                 mealRecords);
-            dialog.ShowDialog(this);
+            dialog.Show(this);
         };
 
         var closePanel = new FlowLayoutPanel
