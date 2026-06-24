@@ -692,26 +692,20 @@ public sealed class MainForm : Form
             StyleMonthlyMatrixRow(matrixRow, month, daysInMonth, false);
         }
 
+        AddMonthlyMatrixSectionHeader("日別合計", daysInMonth);
         AddMonthlyMatrixSummaryRow("生徒合計", month, daysInMonth,
             date => CountMeals(date, person => person.Type == PersonType.Student),
             Color.FromArgb(224, 239, 252));
-        AddMonthlyMatrixSummaryRow("職員室の職員", month, daysInMonth,
+        AddMonthlyMatrixSummaryRow("職員室合計", month, daysInMonth,
             date => CountMeals(date, person =>
                 person.Type == PersonType.Staff &&
                 IsStaffRoom(person.GetDeliveryPlace(date))),
             Color.FromArgb(232, 241, 250));
-        AddMonthlyMatrixSummaryRow("その他の職員", month, daysInMonth,
+        AddMonthlyMatrixSummaryRow("教室職員", month, daysInMonth,
             date => CountMeals(date, person =>
                 person.Type == PersonType.Staff &&
                 !IsStaffRoom(person.GetDeliveryPlace(date))),
             Color.FromArgb(238, 238, 248));
-        AddMonthlyMatrixSummaryRow("試食会 食数", month, daysInMonth,
-            date => CountMeals(date, person => person.Type == PersonType.Tasting),
-            Color.FromArgb(255, 235, 213));
-        AddMonthlyMatrixSummaryRow("試食会 牛乳", month, daysInMonth,
-            date => CountMeals(date, person =>
-                person.Type == PersonType.Tasting && person.HasMilk),
-            Color.FromArgb(255, 245, 220));
         AddMonthlyMatrixSummaryRow("給食合計", month, daysInMonth,
             date => CountServed(date, _data.People), Color.FromArgb(224, 239, 252));
         AddMonthlyMatrixSummaryRow("牛乳注文数", month, daysInMonth,
@@ -726,8 +720,28 @@ public sealed class MainForm : Form
                 person.HasAllergySupport &&
                 GetMealStatus(person, date) == MealStatus.Serve),
             Color.FromArgb(255, 239, 220));
+        AddMonthlyMatrixSummaryRow("試食会 食数", month, daysInMonth,
+            date => CountMeals(date, person => person.Type == PersonType.Tasting),
+            Color.FromArgb(255, 235, 213));
+        AddMonthlyMatrixSummaryRow("試食会 牛乳", month, daysInMonth,
+            date => CountMeals(date, person =>
+                person.Type == PersonType.Tasting && person.HasMilk),
+            Color.FromArgb(255, 245, 220));
 
         _monthlyMatrixGrid.ResumeLayout();
+    }
+
+    private void AddMonthlyMatrixSectionHeader(string label, int daysInMonth)
+    {
+        var values = new object[daysInMonth + 3];
+        values[1] = label;
+        var row = _monthlyMatrixGrid.Rows[_monthlyMatrixGrid.Rows.Add(values)];
+        row.Height = 28;
+        row.DefaultCellStyle.BackColor = Color.FromArgb(67, 87, 105);
+        row.DefaultCellStyle.ForeColor = Color.White;
+        row.DefaultCellStyle.Font = new Font(_monthlyMatrixGrid.Font, FontStyle.Bold);
+        row.Cells[1].Style.Alignment = DataGridViewContentAlignment.MiddleLeft;
+        row.DividerHeight = 3;
     }
 
     private int CountMeals(DateTime date, Func<Person, bool> predicate)
