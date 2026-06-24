@@ -119,10 +119,18 @@ public sealed class MealRecord
     public string Reason { get; set; } = "";
 }
 
+public sealed class ClassBasicCount
+{
+    public string Grade { get; set; } = "";
+    public string ClassName { get; set; } = "";
+    public int BasicCount { get; set; }
+}
+
 public sealed class AppData
 {
     public List<AppUser> Users { get; set; } = [];
     public List<Person> People { get; set; } = [];
     public List<MealRecord> MealRecords { get; set; } = [];
     public List<string> DeliveryPlaces { get; set; } = [];
+    public List<ClassBasicCount> ClassBasicCounts { get; set; } = [];
 }
