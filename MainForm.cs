@@ -8,14 +8,18 @@ public sealed class MainForm : Form
     private readonly AppData _data;
     private readonly BindingList<PersonRow> _personRows = [];
     private readonly BindingList<DailyMealRow> _dailyRows = [];
+    private readonly BindingList<MonthlyMealRow> _monthlyRows = [];
     private readonly BindingList<SummaryRow> _summaryRows = [];
     private readonly AppUser? _currentUser;
 
     private readonly DataGridView _peopleGrid = new();
     private readonly DataGridView _dailyGrid = new();
+    private readonly DataGridView _monthlyGrid = new();
     private readonly DataGridView _summaryGrid = new();
     private readonly DateTimePicker _mealDatePicker = new();
+    private readonly DateTimePicker _mealMonthPicker = new();
     private readonly Label _dailyTotalLabel = new();
+    private readonly Label _monthlyTotalLabel = new();
 
     public MainForm(AppUser? currentUser = null)
     {
@@ -34,7 +38,7 @@ public sealed class MainForm : Form
 
         Controls.Add(CreateLayout());
         RefreshPeople();
-        RefreshDaily();
+        RefreshMonthly();
         RefreshSummary();
     }
 
@@ -116,9 +120,49 @@ public sealed class MainForm : Form
     {
         var tabs = new TabControl { Dock = DockStyle.Fill };
         tabs.TabPages.Add(CreatePeoplePage());
-        tabs.TabPages.Add(CreateDailyPage());
+        tabs.TabPages.Add(CreateMonthlyPage());
         tabs.TabPages.Add(CreateSummaryPage());
         return tabs;
+    }
+
+    private TabPage CreateMonthlyPage()
+    {
+        var page = new TabPage("月別給食数");
+        var panel = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 3,
+            Padding = new Padding(12)
+        };
+        panel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        panel.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        panel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+        var top = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            AutoSize = true,
+            WrapContents = false
+        };
+        _mealMonthPicker.Format = DateTimePickerFormat.Custom;
+        _mealMonthPicker.CustomFormat = "yyyy年MM月";
+        _mealMonthPicker.ShowUpDown = true;
+        _mealMonthPicker.Width = 130;
+        _mealMonthPicker.ValueChanged += (_, _) => RefreshMonthly();
+        top.Controls.Add(new Label { Text = "対象月", AutoSize = true, Padding = new Padding(0, 8, 6, 0) });
+        top.Controls.Add(_mealMonthPicker);
+        top.Controls.Add(CreateButton("更新", RefreshMonthly));
+
+        ConfigureMonthlyGrid();
+        _monthlyTotalLabel.AutoSize = true;
+        _monthlyTotalLabel.Padding = new Padding(4, 8, 0, 0);
+
+        panel.Controls.Add(top, 0, 0);
+        panel.Controls.Add(_monthlyGrid, 0, 1);
+        panel.Controls.Add(_monthlyTotalLabel, 0, 2);
+        page.Controls.Add(panel);
+        return page;
     }
 
     private TabPage CreatePeoplePage()
@@ -298,6 +342,25 @@ public sealed class MainForm : Form
         };
     }
 
+    private void ConfigureMonthlyGrid()
+    {
+        _monthlyGrid.Dock = DockStyle.Fill;
+        _monthlyGrid.ReadOnly = true;
+        _monthlyGrid.AllowUserToAddRows = false;
+        _monthlyGrid.AllowUserToDeleteRows = false;
+        _monthlyGrid.AutoGenerateColumns = false;
+        _monthlyGrid.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+        _monthlyGrid.Columns.Clear();
+        _monthlyGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "日付", DataPropertyName = nameof(MonthlyMealRow.Date), Width = 95 });
+        _monthlyGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "曜日", DataPropertyName = nameof(MonthlyMealRow.DayOfWeek), Width = 60 });
+        _monthlyGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "配膳場所", DataPropertyName = nameof(MonthlyMealRow.DeliveryPlace), Width = 180 });
+        _monthlyGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "提供数", DataPropertyName = nameof(MonthlyMealRow.Served), Width = 80 });
+        _monthlyGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "牛乳数", DataPropertyName = nameof(MonthlyMealRow.Milk), Width = 80 });
+        _monthlyGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "アレルギー対応数", DataPropertyName = nameof(MonthlyMealRow.AllergySupport), Width = 120 });
+        _monthlyGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "停止・欠席数", DataPropertyName = nameof(MonthlyMealRow.StoppedOrAbsent), Width = 110 });
+        _monthlyGrid.DataSource = _monthlyRows;
+    }
+
     private void RefreshPeople()
     {
         _personRows.Clear();
@@ -328,6 +391,77 @@ public sealed class MainForm : Form
         }
 
         UpdateDailyTotal();
+    }
+
+    private void RefreshMonthly()
+    {
+        _monthlyRows.Clear();
+        var month = new DateTime(_mealMonthPicker.Value.Year, _mealMonthPicker.Value.Month, 1);
+        var lastDate = month.AddMonths(1).AddDays(-1);
+
+        for (var date = month; date <= lastDate; date = date.AddDays(1))
+        {
+            if (date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
+            {
+                continue;
+            }
+
+            var targetDate = date;
+            var activePeople = _data.People
+                .Where(person => person.ActiveFrom.Date <= targetDate &&
+                                 (person.ActiveTo is null || person.ActiveTo.Value.Date >= targetDate))
+                .ToList();
+
+            var groups = activePeople
+                .GroupBy(person => person.GetDeliveryPlace(targetDate))
+                .OrderBy(group => group.Key);
+
+            foreach (var group in groups)
+            {
+                var people = group.ToList();
+                var servedPeople = people
+                    .Where(person => GetMealStatus(person, targetDate) == MealStatus.Serve)
+                    .ToList();
+
+                _monthlyRows.Add(new MonthlyMealRow
+                {
+                    DateValue = targetDate,
+                    Date = targetDate.ToString("M/d"),
+                    DayOfWeek = JapaneseDayOfWeek(targetDate.DayOfWeek),
+                    DeliveryPlace = string.IsNullOrWhiteSpace(group.Key) ? "未設定" : group.Key,
+                    Served = servedPeople.Count,
+                    Milk = servedPeople.Count(person => person.HasMilk),
+                    AllergySupport = servedPeople.Count(person => person.HasAllergySupport),
+                    StoppedOrAbsent = people.Count - servedPeople.Count
+                });
+            }
+        }
+
+        var served = _monthlyRows.Sum(row => row.Served);
+        var milk = _monthlyRows.Sum(row => row.Milk);
+        var allergy = _monthlyRows.Sum(row => row.AllergySupport);
+        _monthlyTotalLabel.Text = $"月合計  提供: {served} / 牛乳: {milk} / アレルギー対応: {allergy}";
+    }
+
+    private MealStatus GetMealStatus(Person person, DateTime date)
+    {
+        var record = _data.MealRecords.FirstOrDefault(item =>
+            item.PersonId == person.Id && item.Date.Date == date.Date);
+        return record?.Status ?? (person.EatsOn(date.DayOfWeek) ? MealStatus.Serve : MealStatus.Stop);
+    }
+
+    private static string JapaneseDayOfWeek(DayOfWeek dayOfWeek)
+    {
+        return dayOfWeek switch
+        {
+            DayOfWeek.Monday => "月",
+            DayOfWeek.Tuesday => "火",
+            DayOfWeek.Wednesday => "水",
+            DayOfWeek.Thursday => "木",
+            DayOfWeek.Friday => "金",
+            DayOfWeek.Saturday => "土",
+            _ => "日"
+        };
     }
 
     private void RefreshSummary()
@@ -411,6 +545,7 @@ public sealed class MainForm : Form
         _repository.Save(_data);
         RefreshPeople();
         RefreshDaily();
+        RefreshMonthly();
         RefreshSummary();
         MessageBox.Show($"{added}人を読み込みました。", "名簿読み込み", MessageBoxButtons.OK, MessageBoxIcon.Information);
     }
@@ -489,6 +624,7 @@ public sealed class MainForm : Form
         _repository.Save(_data);
         RefreshPeople();
         RefreshDaily();
+        RefreshMonthly();
     }
 
     private void DeleteSelectedPerson()
@@ -560,6 +696,7 @@ public sealed class MainForm : Form
         _repository.Save(_data);
         RefreshPeople();
         RefreshDaily();
+        RefreshMonthly();
         RefreshSummary();
     }
 
@@ -670,6 +807,18 @@ public sealed class MainForm : Form
                 Reason = record?.Reason ?? (person.EatsOn(date.DayOfWeek) ? "" : "喫食日ではありません")
             };
         }
+    }
+
+    private sealed class MonthlyMealRow
+    {
+        public DateTime DateValue { get; init; }
+        public string Date { get; init; } = "";
+        public string DayOfWeek { get; init; } = "";
+        public string DeliveryPlace { get; init; } = "";
+        public int Served { get; init; }
+        public int Milk { get; init; }
+        public int AllergySupport { get; init; }
+        public int StoppedOrAbsent { get; init; }
     }
 
     private static string FormatEatDays(Person person)
