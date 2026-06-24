@@ -190,6 +190,7 @@ public sealed class MainForm : Form
         buttons.Controls.Add(CreateButton("1人追加", AddPerson, requiresAdmin: true));
         buttons.Controls.Add(CreateButton("選択を編集", EditSelectedPerson, requiresAdmin: true));
         buttons.Controls.Add(CreateButton("選択を削除", DeleteSelectedPerson, requiresAdmin: true));
+        buttons.Controls.Add(CreateButton("名簿を全員削除", DeleteAllPeople, requiresAdmin: true));
         buttons.Controls.Add(CreateButton("配膳場所管理", ManageDeliveryPlaces, requiresAdmin: true));
 
         ConfigurePeopleGrid();
@@ -684,6 +685,34 @@ public sealed class MainForm : Form
         _data.People.Remove(selected);
         _data.MealRecords.RemoveAll(r => r.PersonId == selected.Id);
         SaveAll();
+    }
+
+    private void DeleteAllPeople()
+    {
+        if (_data.People.Count == 0)
+        {
+            MessageBox.Show("削除する名簿データがありません。", "名簿を全員削除",
+                MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+
+        var result = MessageBox.Show(
+            $"登録されている {_data.People.Count} 人を全員削除します。\n" +
+            "給食記録もすべて削除されます。この操作は元に戻せません。\n\n本当に削除しますか？",
+            "名簿を全員削除",
+            MessageBoxButtons.YesNo,
+            MessageBoxIcon.Warning,
+            MessageBoxDefaultButton.Button2);
+        if (result != DialogResult.Yes)
+        {
+            return;
+        }
+
+        _data.People.Clear();
+        _data.MealRecords.Clear();
+        SaveAll();
+        MessageBox.Show("名簿を全員削除しました。", "名簿を全員削除",
+            MessageBoxButtons.OK, MessageBoxIcon.Information);
     }
 
     private Person? SelectedPerson()
