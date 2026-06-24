@@ -1401,6 +1401,7 @@ public sealed class MainForm : Form
 
         _data.DeliveryPlaceBasicCounts = dialog.DeliveryPlaceBasicCounts;
         _repository.Save(_data);
+        RefreshMonthly();
     }
 
     private void DeleteSelectedPerson()
