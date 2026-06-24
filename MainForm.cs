@@ -23,7 +23,7 @@ public sealed class MainForm : Form
     private readonly DateTimePicker _mealDatePicker = new();
     private readonly Label _registeredFiscalYearLabel = new();
     private readonly Label _mealYearLabel = new();
-    private readonly ComboBox _mealMonthCombo = new();
+    private readonly NumericUpDown _mealMonthInput = new();
     private readonly Label _dailyTotalLabel = new();
     private readonly Label _monthlyTotalLabel = new();
     private readonly Label _monthlyDetailLabel = new();
@@ -179,15 +179,16 @@ public sealed class MainForm : Form
         _mealYearLabel.Padding = new Padding(0, 8, 4, 0);
         top.Controls.Add(_mealYearLabel);
 
-        _mealMonthCombo.DropDownStyle = ComboBoxStyle.DropDownList;
-        _mealMonthCombo.Width = 65;
-        _mealMonthCombo.Items.AddRange(
-            Enumerable.Range(1, 12).Select(month => $"{month}月").ToArray());
+        _mealMonthInput.Minimum = 1;
+        _mealMonthInput.Maximum = 12;
+        _mealMonthInput.Width = 55;
+        _mealMonthInput.TextAlign = HorizontalAlignment.Right;
         _updatingMealMonth = true;
-        _mealMonthCombo.SelectedIndex = _selectedMealMonth - 1;
+        _mealMonthInput.Value = _selectedMealMonth;
         _updatingMealMonth = false;
-        _mealMonthCombo.SelectedIndexChanged += (_, _) => ChangeMealMonth();
-        top.Controls.Add(_mealMonthCombo);
+        _mealMonthInput.ValueChanged += (_, _) => ChangeMealMonth();
+        top.Controls.Add(_mealMonthInput);
+        top.Controls.Add(new Label { Text = "月", AutoSize = true, Padding = new Padding(2, 8, 4, 0) });
         top.Controls.Add(CreateButton("更新", RefreshMonthly));
 
         _monthlyTotalLabel.AutoSize = true;
@@ -610,12 +611,12 @@ public sealed class MainForm : Form
 
     private void ChangeMealMonth()
     {
-        if (_updatingMealMonth || _mealMonthCombo.SelectedIndex < 0)
+        if (_updatingMealMonth)
         {
             return;
         }
 
-        var newMonth = _mealMonthCombo.SelectedIndex + 1;
+        var newMonth = (int)_mealMonthInput.Value;
         _selectedMealMonth = newMonth;
         _selectedMealYear = YearForFiscalMonth(_registeredFiscalYear, newMonth);
         _mealYearLabel.Text = $"{_selectedMealYear}年";
@@ -639,7 +640,7 @@ public sealed class MainForm : Form
         _registeredFiscalYearLabel.Text = $"登録年度: {_registeredFiscalYear}年度";
         _mealYearLabel.Text = $"{_selectedMealYear}年";
         _updatingMealMonth = true;
-        _mealMonthCombo.SelectedIndex = 3;
+        _mealMonthInput.Value = 4;
         _updatingMealMonth = false;
         RefreshMonthly();
     }
