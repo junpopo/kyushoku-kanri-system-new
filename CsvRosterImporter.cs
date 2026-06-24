@@ -34,6 +34,9 @@ public static class CsvRosterImporter
             }
 
             var (lastName, firstName) = SplitName(fullName);
+            var activeFrom = ParseDate(
+                Get(row, header, "開始日", "在籍開始日", "activefrom").Trim(),
+                DateTime.Today);
             people.Add(new Person
             {
                 Type = ParsePersonType(Get(row, header, "区分", "分類", "type").Trim()),
@@ -50,11 +53,16 @@ public static class CsvRosterImporter
                 EatFriday = true,
                 HasMilk = true,
                 HasAllergySupport = false,
-                ActiveFrom = DateTime.Today
+                ActiveFrom = activeFrom
             });
         }
 
         return people;
+    }
+
+    private static DateTime ParseDate(string value, DateTime defaultValue)
+    {
+        return DateTime.TryParse(value, out var date) ? date.Date : defaultValue.Date;
     }
 
     private static PersonType ParsePersonType(string value)

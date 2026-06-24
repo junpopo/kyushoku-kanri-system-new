@@ -74,7 +74,7 @@ for (const type of types) {
     fullName = `${lastName} ${firstName}`;
   }
 
-  rows.push([type, grade, className, number, fullName]);
+  rows.push([type, grade, className, number, fullName, "2026/4/1"]);
 }
 
 function csvValue(value) {
@@ -83,7 +83,7 @@ function csvValue(value) {
 }
 
 const csv = [
-  ["区分", "学年", "組", "番号", "氏名"],
+  ["区分", "学年", "組", "番号", "氏名", "開始日"],
   ...rows,
 ].map((row) => row.map(csvValue).join(",")).join("\r\n");
 
