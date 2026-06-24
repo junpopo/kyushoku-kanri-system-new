@@ -80,7 +80,6 @@ public sealed class DeliveryPlaceBasicCountForm : Form
         });
         tools.Controls.Add(CreateButton("4月名簿から12か月作成", CreateForecastFromAprilRoster));
         tools.Controls.Add(CreateButton("配膳場所を追加", AddMissingDeliveryPlaces));
-        tools.Controls.Add(CreateButton("選択行を削除", DeleteSelectedRow));
 
         ConfigureGrid();
 
@@ -119,8 +118,8 @@ public sealed class DeliveryPlaceBasicCountForm : Form
     {
         _grid.Dock = DockStyle.Fill;
         _grid.AutoGenerateColumns = false;
-        _grid.AllowUserToAddRows = true;
-        _grid.AllowUserToDeleteRows = true;
+        _grid.AllowUserToAddRows = false;
+        _grid.AllowUserToDeleteRows = false;
         _grid.RowHeadersVisible = false;
         _grid.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
         _grid.MultiSelect = false;
@@ -130,15 +129,16 @@ public sealed class DeliveryPlaceBasicCountForm : Form
             HeaderText = "配膳場所",
             DataPropertyName = nameof(DeliveryPlaceBasicCount.DeliveryPlace),
             Width = 145,
-            Frozen = true
+            Frozen = true,
+            ReadOnly = true
         });
-        _grid.Columns.Add(new DataGridViewComboBoxColumn
+        _grid.Columns.Add(new DataGridViewTextBoxColumn
         {
             HeaderText = "区分",
             DataPropertyName = nameof(DeliveryPlaceBasicCount.Category),
-            DataSource = new[] { "生徒", "職員" },
             Width = 70,
-            Frozen = true
+            Frozen = true,
+            ReadOnly = true
         });
         AddMonthColumn("4月", nameof(DeliveryPlaceBasicCount.April));
         AddMonthColumn("5月", nameof(DeliveryPlaceBasicCount.May));
@@ -311,17 +311,6 @@ public sealed class DeliveryPlaceBasicCountForm : Form
             .Distinct(StringComparer.CurrentCultureIgnoreCase)
             .OrderBy(DeliveryPlaceSortKey)
             .ThenBy(place => place);
-    }
-
-    private void DeleteSelectedRow()
-    {
-        if (_grid.CurrentRow?.DataBoundItem is not DeliveryPlaceBasicCount selected)
-        {
-            MessageBox.Show("削除する行を選択してください。");
-            return;
-        }
-
-        _rows.Remove(selected);
     }
 
     private bool StoreCurrentYear()
