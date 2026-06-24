@@ -853,6 +853,11 @@ public sealed class MainForm : Form
             return null;
         }
 
+        if (IsStaffRoom(deliveryPlace) && personType != PersonType.Staff)
+        {
+            return null;
+        }
+
         var fiscalYear = month.Month >= 4 ? month.Year : month.Year - 1;
         var category = personType == PersonType.Student ? "生徒" : "職員";
         var item = _data.DeliveryPlaceBasicCounts.FirstOrDefault(basicCount =>

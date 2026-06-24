@@ -293,7 +293,9 @@ public sealed class DeliveryPlaceBasicCountForm : Form
         return _people
             .Where(person =>
                 IsActive(person, aprilDate) &&
-                person.Type != PersonType.Tasting)
+                person.Type != PersonType.Tasting &&
+                (!IsStaffRoom(person.GetDeliveryPlace(aprilDate)) ||
+                 person.Type == PersonType.Staff))
             .GroupBy(person => new
             {
                 DeliveryPlace = NormalizePlace(person.GetDeliveryPlace(aprilDate)),
