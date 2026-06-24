@@ -9,9 +9,7 @@ public sealed class DeliveryPlaceBasicCountForm : Form
     private readonly IReadOnlyCollection<Person> _people;
     private readonly BindingList<DeliveryPlaceBasicCount> _rows = [];
     private readonly DataGridView _grid = new();
-    private readonly NumericUpDown _fiscalYear = new();
     private int _loadedFiscalYear;
-    private bool _loadingYear;
 
     public List<DeliveryPlaceBasicCount> DeliveryPlaceBasicCounts { get; private set; } = [];
 
@@ -71,32 +69,11 @@ public sealed class DeliveryPlaceBasicCountForm : Form
         };
         tools.Controls.Add(new Label
         {
-            Text = "年度",
+            Text = $"年度: {_loadedFiscalYear}年度（変更不可）",
             AutoSize = true,
-            Padding = new Padding(0, 7, 4, 0)
+            Padding = new Padding(0, 7, 12, 0),
+            Font = new Font(Font, FontStyle.Bold)
         });
-        _fiscalYear.Minimum = 2000;
-        _fiscalYear.Maximum = 2100;
-        _fiscalYear.Value = _loadedFiscalYear;
-        _fiscalYear.Width = 75;
-        _fiscalYear.ValueChanged += (_, _) =>
-        {
-            if (_loadingYear)
-            {
-                return;
-            }
-
-            if (!StoreCurrentYear())
-            {
-                _loadingYear = true;
-                _fiscalYear.Value = _loadedFiscalYear;
-                _loadingYear = false;
-                return;
-            }
-
-            LoadFiscalYear((int)_fiscalYear.Value);
-        };
-        tools.Controls.Add(_fiscalYear);
         tools.Controls.Add(CreateButton("4月名簿から12か月作成", CreateForecastFromAprilRoster));
         tools.Controls.Add(CreateButton("配膳場所を追加", AddMissingDeliveryPlaces));
         tools.Controls.Add(CreateButton("選択行を削除", DeleteSelectedRow));
@@ -243,7 +220,7 @@ public sealed class DeliveryPlaceBasicCountForm : Form
     private void CreateForecastFromAprilRoster()
     {
         _grid.EndEdit();
-        var fiscalYear = (int)_fiscalYear.Value;
+        var fiscalYear = _loadedFiscalYear;
         var aprilDate = new DateTime(fiscalYear, 4, 1);
         var counts = _people
             .Where(person => IsActive(person, aprilDate))
@@ -265,7 +242,7 @@ public sealed class DeliveryPlaceBasicCountForm : Form
     private void AddMissingDeliveryPlaces()
     {
         _grid.EndEdit();
-        var fiscalYear = (int)_fiscalYear.Value;
+        var fiscalYear = _loadedFiscalYear;
         var aprilDate = new DateTime(fiscalYear, 4, 1);
         var counts = _people
             .Where(person => IsActive(person, aprilDate))
