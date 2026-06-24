@@ -481,7 +481,7 @@ public sealed class MainForm : Form
         _monthlyMatrixGrid.CellDoubleClick += (_, eventArgs) =>
         {
             if (eventArgs.RowIndex < 0 ||
-                eventArgs.ColumnIndex < 2 ||
+                eventArgs.ColumnIndex < 3 ||
                 _monthlyMatrixGrid.Columns[eventArgs.ColumnIndex].Tag is not DateTime date)
             {
                 return;
@@ -598,6 +598,13 @@ public sealed class MainForm : Form
         });
         _monthlyMatrixGrid.Columns.Add(new DataGridViewTextBoxColumn
         {
+            HeaderText = "基本数",
+            Width = 55,
+            Frozen = true,
+            SortMode = DataGridViewColumnSortMode.NotSortable
+        });
+        _monthlyMatrixGrid.Columns.Add(new DataGridViewTextBoxColumn
+        {
             HeaderText = "区分",
             Width = 75,
             Frozen = true,
@@ -641,14 +648,15 @@ public sealed class MainForm : Form
 
         foreach (var group in groups)
         {
-            var values = new object[daysInMonth + 3];
+            var values = new object[daysInMonth + 4];
             var people = group
                 .Select(item => item.Person)
                 .DistinctBy(person => person.Id)
                 .ToList();
             var firstPerson = people[0];
             values[0] = group.Key.DeliveryPlace;
-            values[1] = firstPerson.TypeLabel;
+            values[1] = GetDeliveryPlaceBasicCount(month, group.Key.DeliveryPlace)?.ToString() ?? "";
+            values[2] = firstPerson.TypeLabel;
             var monthTotal = 0;
             for (var day = 1; day <= daysInMonth; day++)
             {
@@ -657,7 +665,7 @@ public sealed class MainForm : Form
                     IsActive(person, date) &&
                     NormalizeDeliveryPlace(person.GetDeliveryPlace(date)) == group.Key.DeliveryPlace &&
                     GetMealStatus(person, date) == MealStatus.Serve);
-                values[day + 1] = count;
+                values[day + 2] = count;
                 monthTotal += count;
             }
 
@@ -681,7 +689,7 @@ public sealed class MainForm : Form
             {
                 for (var day = 1; day <= daysInMonth; day++)
                 {
-                    matrixRow.Cells[day + 1].ToolTipText =
+                    matrixRow.Cells[day + 2].ToolTipText =
                         "ダブルクリックすると喫食者を確認できます。";
                 }
             }
@@ -721,7 +729,7 @@ public sealed class MainForm : Form
         allergyRow.Tag = MonthlySummaryRowTag.Allergy;
         for (var day = 1; day <= daysInMonth; day++)
         {
-            allergyRow.Cells[day + 1].ToolTipText =
+            allergyRow.Cells[day + 2].ToolTipText =
                 "ダブルクリックするとアレルギー対応者を確認できます。";
         }
         AddMonthlyMatrixSummaryRow("試食会 食数", month, daysInMonth,
@@ -740,14 +748,14 @@ public sealed class MainForm : Form
 
     private void AddMonthlyMatrixSectionHeader(string label, int daysInMonth)
     {
-        var values = new object[daysInMonth + 3];
-        values[1] = label;
+        var values = new object[daysInMonth + 4];
+        values[2] = label;
         var row = _monthlyMatrixGrid.Rows[_monthlyMatrixGrid.Rows.Add(values)];
         row.Height = 28;
         row.DefaultCellStyle.BackColor = Color.FromArgb(67, 87, 105);
         row.DefaultCellStyle.ForeColor = Color.White;
         row.DefaultCellStyle.Font = new Font(_monthlyMatrixGrid.Font, FontStyle.Bold);
-        row.Cells[1].Style.Alignment = DataGridViewContentAlignment.MiddleLeft;
+        row.Cells[2].Style.Alignment = DataGridViewContentAlignment.MiddleLeft;
         row.DividerHeight = 3;
     }
 
@@ -757,6 +765,37 @@ public sealed class MainForm : Form
             predicate(person) &&
             IsActive(person, date) &&
             GetMealStatus(person, date) == MealStatus.Serve);
+    }
+
+    private int? GetDeliveryPlaceBasicCount(DateTime month, string deliveryPlace)
+    {
+        var fiscalYear = month.Month >= 4 ? month.Year : month.Year - 1;
+        var item = _data.DeliveryPlaceBasicCounts.FirstOrDefault(basicCount =>
+            basicCount.FiscalYear == fiscalYear &&
+            NormalizeDeliveryPlace(basicCount.DeliveryPlace)
+                .Equals(
+                    NormalizeDeliveryPlace(deliveryPlace),
+                    StringComparison.CurrentCultureIgnoreCase));
+        if (item is null)
+        {
+            return null;
+        }
+
+        return month.Month switch
+        {
+            4 => item.April,
+            5 => item.May,
+            6 => item.June,
+            7 => item.July,
+            8 => item.August,
+            9 => item.September,
+            10 => item.October,
+            11 => item.November,
+            12 => item.December,
+            1 => item.January,
+            2 => item.February,
+            _ => item.March
+        };
     }
 
     private static bool IsStaffRoom(string deliveryPlace)
@@ -835,14 +874,14 @@ public sealed class MainForm : Form
         Func<DateTime, int> countForDate,
         Color backColor)
     {
-        var values = new object[daysInMonth + 3];
+        var values = new object[daysInMonth + 4];
         values[0] = "";
-        values[1] = label;
+        values[2] = label;
         var total = 0;
         for (var day = 1; day <= daysInMonth; day++)
         {
             var count = countForDate(new DateTime(month.Year, month.Month, day));
-            values[day + 1] = count;
+            values[day + 2] = count;
             total += count;
         }
 
@@ -869,7 +908,7 @@ public sealed class MainForm : Form
                 continue;
             }
 
-            var cell = row.Cells[day + 1];
+            var cell = row.Cells[day + 2];
             var count = Convert.ToInt32(cell.Value);
             if (previousCount is not null && count != previousCount.Value)
             {
@@ -895,11 +934,12 @@ public sealed class MainForm : Form
         bool isSummary)
     {
         row.Cells[0].Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
-        row.Cells[1].Style.Alignment = DataGridViewContentAlignment.MiddleLeft;
+        row.Cells[1].Style.Alignment = DataGridViewContentAlignment.MiddleRight;
+        row.Cells[2].Style.Alignment = DataGridViewContentAlignment.MiddleLeft;
         for (var day = 1; day <= daysInMonth; day++)
         {
             var date = new DateTime(month.Year, month.Month, day);
-            var cellIndex = day + 1;
+            var cellIndex = day + 2;
             if (date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
             {
                 row.Cells[cellIndex].Style.BackColor = Color.FromArgb(255, 205, 45);
