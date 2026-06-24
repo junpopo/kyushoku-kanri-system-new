@@ -9,6 +9,7 @@ public sealed class MainForm : Form
     private readonly BindingList<PersonRow> _personRows = [];
     private readonly BindingList<DailyMealRow> _dailyRows = [];
     private readonly BindingList<MonthlyMealRow> _monthlyRows = [];
+    private readonly List<MonthlyMealRow> _monthlyAllRows = [];
     private readonly BindingList<SummaryRow> _summaryRows = [];
     private readonly AppUser? _currentUser;
     private readonly bool _isReadOnly;
@@ -16,11 +17,14 @@ public sealed class MainForm : Form
     private readonly DataGridView _peopleGrid = new();
     private readonly DataGridView _dailyGrid = new();
     private readonly DataGridView _monthlyGrid = new();
+    private readonly TableLayoutPanel _monthlyCalendar = new();
     private readonly DataGridView _summaryGrid = new();
     private readonly DateTimePicker _mealDatePicker = new();
     private readonly DateTimePicker _mealMonthPicker = new();
     private readonly Label _dailyTotalLabel = new();
     private readonly Label _monthlyTotalLabel = new();
+    private readonly Label _monthlyDetailLabel = new();
+    private DateTime _selectedMonthlyDate = DateTime.Today;
 
     public MainForm(AppUser? currentUser = null)
     {
@@ -134,11 +138,13 @@ public sealed class MainForm : Form
         {
             Dock = DockStyle.Fill,
             ColumnCount = 1,
-            RowCount = 3,
+            RowCount = 5,
             Padding = new Padding(12)
         };
         panel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        panel.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        panel.RowStyles.Add(new RowStyle(SizeType.Percent, 62));
+        panel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        panel.RowStyles.Add(new RowStyle(SizeType.Percent, 38));
         panel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
         var top = new FlowLayoutPanel
@@ -157,12 +163,17 @@ public sealed class MainForm : Form
         top.Controls.Add(CreateButton("更新", RefreshMonthly));
 
         ConfigureMonthlyGrid();
+        _monthlyDetailLabel.AutoSize = true;
+        _monthlyDetailLabel.Font = new Font(Font, FontStyle.Bold);
+        _monthlyDetailLabel.Padding = new Padding(4, 5, 0, 3);
         _monthlyTotalLabel.AutoSize = true;
         _monthlyTotalLabel.Padding = new Padding(4, 8, 0, 0);
 
         panel.Controls.Add(top, 0, 0);
-        panel.Controls.Add(_monthlyGrid, 0, 1);
-        panel.Controls.Add(_monthlyTotalLabel, 0, 2);
+        panel.Controls.Add(_monthlyCalendar, 0, 1);
+        panel.Controls.Add(_monthlyDetailLabel, 0, 2);
+        panel.Controls.Add(_monthlyGrid, 0, 3);
+        panel.Controls.Add(_monthlyTotalLabel, 0, 4);
         page.Controls.Add(panel);
         return page;
     }
@@ -392,8 +403,6 @@ public sealed class MainForm : Form
         _monthlyGrid.ScrollBars = ScrollBars.Vertical;
         _monthlyGrid.RowHeadersVisible = false;
         _monthlyGrid.Columns.Clear();
-        _monthlyGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "日付", DataPropertyName = nameof(MonthlyMealRow.Date), FillWeight = 70 });
-        _monthlyGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "曜日", DataPropertyName = nameof(MonthlyMealRow.DayOfWeek), FillWeight = 45 });
         _monthlyGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "配膳場所", DataPropertyName = nameof(MonthlyMealRow.DeliveryPlace), FillWeight = 145 });
         _monthlyGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "提供数", DataPropertyName = nameof(MonthlyMealRow.Served), FillWeight = 65 });
         _monthlyGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "牛乳数", DataPropertyName = nameof(MonthlyMealRow.Milk), FillWeight = 65 });
@@ -436,7 +445,7 @@ public sealed class MainForm : Form
 
     private void RefreshMonthly()
     {
-        _monthlyRows.Clear();
+        _monthlyAllRows.Clear();
         var month = new DateTime(_mealMonthPicker.Value.Year, _mealMonthPicker.Value.Month, 1);
         var lastDate = month.AddMonths(1).AddDays(-1);
 
@@ -464,7 +473,7 @@ public sealed class MainForm : Form
                     .Where(person => GetMealStatus(person, targetDate) == MealStatus.Serve)
                     .ToList();
 
-                _monthlyRows.Add(new MonthlyMealRow
+                _monthlyAllRows.Add(new MonthlyMealRow
                 {
                     DateValue = targetDate,
                     Date = targetDate.ToString("M/d"),
@@ -478,10 +487,129 @@ public sealed class MainForm : Form
             }
         }
 
-        var served = _monthlyRows.Sum(row => row.Served);
-        var milk = _monthlyRows.Sum(row => row.Milk);
-        var allergy = _monthlyRows.Sum(row => row.AllergySupport);
+        if (_selectedMonthlyDate.Year != month.Year || _selectedMonthlyDate.Month != month.Month)
+        {
+            _selectedMonthlyDate = month;
+        }
+
+        BuildMonthlyCalendar(month);
+        ShowMonthlyDetails(_selectedMonthlyDate);
+
+        var served = _monthlyAllRows.Sum(row => row.Served);
+        var milk = _monthlyAllRows.Sum(row => row.Milk);
+        var allergy = _monthlyAllRows.Sum(row => row.AllergySupport);
         _monthlyTotalLabel.Text = $"月合計  提供: {served} / 牛乳: {milk} / アレルギー対応: {allergy}";
+    }
+
+    private void BuildMonthlyCalendar(DateTime month)
+    {
+        _monthlyCalendar.SuspendLayout();
+        _monthlyCalendar.Controls.Clear();
+        _monthlyCalendar.ColumnStyles.Clear();
+        _monthlyCalendar.RowStyles.Clear();
+        _monthlyCalendar.Dock = DockStyle.Fill;
+        _monthlyCalendar.ColumnCount = 7;
+        _monthlyCalendar.RowCount = 7;
+        _monthlyCalendar.Padding = new Padding(0, 4, 0, 4);
+        _monthlyCalendar.CellBorderStyle = TableLayoutPanelCellBorderStyle.Single;
+
+        for (var column = 0; column < 7; column++)
+        {
+            _monthlyCalendar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f / 7));
+        }
+
+        _monthlyCalendar.RowStyles.Add(new RowStyle(SizeType.Absolute, 27));
+        for (var row = 1; row < 7; row++)
+        {
+            _monthlyCalendar.RowStyles.Add(new RowStyle(SizeType.Percent, 100f / 6));
+        }
+
+        var dayNames = new[] { "日", "月", "火", "水", "木", "金", "土" };
+        for (var column = 0; column < dayNames.Length; column++)
+        {
+            _monthlyCalendar.Controls.Add(new Label
+            {
+                Text = dayNames[column],
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Font = new Font(Font, FontStyle.Bold),
+                ForeColor = column == 0 ? Color.Firebrick : column == 6 ? Color.RoyalBlue : SystemColors.ControlText,
+                BackColor = Color.FromArgb(242, 244, 247),
+                Margin = Padding.Empty
+            }, column, 0);
+        }
+
+        var firstColumn = (int)month.DayOfWeek;
+        var daysInMonth = DateTime.DaysInMonth(month.Year, month.Month);
+        for (var day = 1; day <= daysInMonth; day++)
+        {
+            var date = new DateTime(month.Year, month.Month, day);
+            var position = firstColumn + day - 1;
+            var column = position % 7;
+            var row = position / 7 + 1;
+            _monthlyCalendar.Controls.Add(CreateCalendarDayButton(date), column, row);
+        }
+
+        _monthlyCalendar.ResumeLayout();
+    }
+
+    private Button CreateCalendarDayButton(DateTime date)
+    {
+        var rows = _monthlyAllRows.Where(row => row.DateValue.Date == date.Date).ToList();
+        var served = rows.Sum(row => row.Served);
+        var milk = rows.Sum(row => row.Milk);
+        var allergy = rows.Sum(row => row.AllergySupport);
+        var isWeekend = date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
+        var button = new Button
+        {
+            Dock = DockStyle.Fill,
+            Margin = Padding.Empty,
+            FlatStyle = FlatStyle.Flat,
+            TextAlign = ContentAlignment.TopLeft,
+            Padding = new Padding(7, 4, 3, 2),
+            Font = new Font(Font.FontFamily, 9),
+            Text = isWeekend
+                ? $"{date.Day}\n給食なし"
+                : $"{date.Day}\n給食 {served}\n牛乳 {milk}  アレルギー {allergy}",
+            BackColor = isWeekend
+                ? Color.FromArgb(245, 245, 245)
+                : served == 0
+                    ? Color.FromArgb(255, 247, 230)
+                    : Color.FromArgb(232, 247, 238),
+            ForeColor = date.DayOfWeek == DayOfWeek.Sunday
+                ? Color.Firebrick
+                : date.DayOfWeek == DayOfWeek.Saturday ? Color.RoyalBlue : Color.FromArgb(32, 45, 58),
+            Cursor = Cursors.Hand
+        };
+        button.FlatAppearance.BorderColor = date.Date == DateTime.Today
+            ? Color.FromArgb(35, 110, 185)
+            : Color.FromArgb(210, 214, 220);
+        button.FlatAppearance.BorderSize = date.Date == DateTime.Today ? 2 : 1;
+        button.Click += (_, _) =>
+        {
+            _selectedMonthlyDate = date;
+            ShowMonthlyDetails(date);
+            BuildMonthlyCalendar(new DateTime(date.Year, date.Month, 1));
+        };
+        if (date.Date == _selectedMonthlyDate.Date)
+        {
+            button.BackColor = Color.FromArgb(215, 234, 252);
+        }
+
+        return button;
+    }
+
+    private void ShowMonthlyDetails(DateTime date)
+    {
+        _monthlyRows.Clear();
+        foreach (var row in _monthlyAllRows
+            .Where(row => row.DateValue.Date == date.Date)
+            .OrderBy(row => row.DeliveryPlace))
+        {
+            _monthlyRows.Add(row);
+        }
+
+        _monthlyDetailLabel.Text = $"{date:yyyy年M月d日}（{JapaneseDayOfWeek(date.DayOfWeek)}）の配膳場所別内訳";
     }
 
     private MealStatus GetMealStatus(Person person, DateTime date)
