@@ -479,6 +479,19 @@ public sealed class MainForm : Form
         _monthlyMatrixGrid.ColumnHeadersDefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
         _monthlyMatrixGrid.ColumnHeadersHeight = 42;
         _monthlyMatrixGrid.RowTemplate.Height = 24;
+        _monthlyMatrixGrid.CellDoubleClick += (_, eventArgs) =>
+        {
+            if (eventArgs.RowIndex < 0 ||
+                eventArgs.ColumnIndex < 2 ||
+                _monthlyMatrixGrid.Rows[eventArgs.RowIndex].Tag is not string deliveryPlace ||
+                _monthlyMatrixGrid.Columns[eventArgs.ColumnIndex].Tag is not DateTime date ||
+                !IsStaffRoom(deliveryPlace))
+            {
+                return;
+            }
+
+            ShowServedPeopleDetails(date, deliveryPlace);
+        };
     }
 
     private void RefreshPeople()
@@ -646,6 +659,7 @@ public sealed class MainForm : Form
             values[^1] = monthTotal;
             var rowIndex = _monthlyMatrixGrid.Rows.Add(values);
             var matrixRow = _monthlyMatrixGrid.Rows[rowIndex];
+            matrixRow.Tag = group.Key.DeliveryPlace;
             if (firstPerson.Type != PersonType.Student)
             {
                 matrixRow.DefaultCellStyle.BackColor = Color.FromArgb(232, 241, 250);
@@ -653,6 +667,14 @@ public sealed class MainForm : Form
             }
 
             StyleMonthlyMatrixRow(matrixRow, month, daysInMonth, false);
+            if (IsStaffRoom(group.Key.DeliveryPlace))
+            {
+                for (var day = 1; day <= daysInMonth; day++)
+                {
+                    matrixRow.Cells[day + 1].ToolTipText =
+                        "ダブルクリックすると喫食者を確認できます。";
+                }
+            }
         }
 
         AddMonthlyMatrixSectionHeader("日別合計", daysInMonth);
@@ -721,6 +743,22 @@ public sealed class MainForm : Form
     {
         return NormalizeDeliveryPlace(deliveryPlace)
             .Equals("職員室", StringComparison.CurrentCultureIgnoreCase);
+    }
+
+    private void ShowServedPeopleDetails(DateTime date, string deliveryPlace)
+    {
+        var people = _data.People
+            .Where(person =>
+                IsActive(person, date) &&
+                IsStaffRoom(person.GetDeliveryPlace(date)) &&
+                GetMealStatus(person, date) == MealStatus.Serve)
+            .OrderBy(person => person.Type)
+            .ThenBy(person => person.LastName)
+            .ThenBy(person => person.FirstName)
+            .ToList();
+
+        using var dialog = new ServedPeopleDetailsForm(date, deliveryPlace, people);
+        dialog.ShowDialog(this);
     }
 
     private void AddMonthlyMatrixSummaryRow(
