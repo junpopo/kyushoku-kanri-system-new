@@ -56,7 +56,7 @@ for (const type of types) {
   let grade = "";
   let className = "";
   let number = "";
-  if (type !== "職員") {
+  if (type === "生徒") {
     grade = String(randomInt(1, 6));
     className = String(randomInt(1, 3));
     const classKey = `${grade}-${className}`;

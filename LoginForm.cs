@@ -70,6 +70,8 @@ public sealed class LoginForm : Form
         AddRow(fields, 1, "ログインID", _loginId);
         AddRow(fields, 2, "パスワード", _password);
         fields.Controls.Add(_message, 1, 3);
+        _loginType.SelectedIndexChanged += (_, _) => UpdateCredentialFields(fields);
+        UpdateCredentialFields(fields);
 
         var buttons = new FlowLayoutPanel
         {
@@ -102,6 +104,20 @@ public sealed class LoginForm : Form
 
     private void TryLogin()
     {
+        if (_loginType.SelectedIndex == 1)
+        {
+            LoggedInUser = _users.FirstOrDefault(user => user.IsActive && user.Role == UserRole.User)
+                ?? new AppUser
+                {
+                    DisplayName = "閲覧利用者",
+                    Role = UserRole.User,
+                    IsActive = true
+                };
+            DialogResult = DialogResult.OK;
+            Close();
+            return;
+        }
+
         var loginId = _loginId.Text.Trim();
         var user = _users.FirstOrDefault(user =>
             user.IsActive &&
@@ -127,5 +143,25 @@ public sealed class LoginForm : Form
         LoggedInUser = user;
         DialogResult = DialogResult.OK;
         Close();
+    }
+
+    private void UpdateCredentialFields(TableLayoutPanel fields)
+    {
+        var showCredentials = _loginType.SelectedIndex == 0;
+        for (var row = 1; row <= 2; row++)
+        {
+            fields.RowStyles[row].SizeType = showCredentials ? SizeType.AutoSize : SizeType.Absolute;
+            fields.RowStyles[row].Height = showCredentials ? 0 : 0;
+            for (var column = 0; column < fields.ColumnCount; column++)
+            {
+                var control = fields.GetControlFromPosition(column, row);
+                if (control is not null)
+                {
+                    control.Visible = showCredentials;
+                }
+            }
+        }
+
+        _message.Text = showCredentials ? "" : "一般利用者は閲覧のみです。";
     }
 }

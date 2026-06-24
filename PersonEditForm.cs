@@ -129,6 +129,7 @@ public sealed class PersonEditForm : Form
 
         _type.DropDownStyle = ComboBoxStyle.DropDownList;
         _type.Items.AddRange(TypeOptions.Select(option => option.Label).ToArray());
+        _type.SelectedIndexChanged += (_, _) => UpdateStudentFields();
 
         AddCompactLabel(panel, "区分", 0, 0);
         AddCompactInput(panel, _type, 1, 0);
@@ -350,6 +351,7 @@ public sealed class PersonEditForm : Form
         _hasActiveTo.Checked = Person.ActiveTo is not null;
         _activeTo.Value = Person.ActiveTo ?? DateTime.Today;
         _memo.Text = Person.Memo;
+        UpdateStudentFields();
     }
 
     private void EnsureInitialHistory()
@@ -381,12 +383,12 @@ public sealed class PersonEditForm : Form
     private bool Apply()
     {
         var selectedType = TypeOptions[Math.Max(0, _type.SelectedIndex)].Type;
-        if (selectedType != PersonType.Staff &&
+        if (selectedType == PersonType.Student &&
             (string.IsNullOrWhiteSpace(_grade.Text) ||
              string.IsNullOrWhiteSpace(_className.Text) ||
              string.IsNullOrWhiteSpace(_studentNumber.Text)))
         {
-            MessageBox.Show("職員以外の場合は、学年・組・番号を入力してください。");
+            MessageBox.Show("生徒の場合は、学年・組・番号を入力してください。");
             return false;
         }
 
@@ -409,9 +411,9 @@ public sealed class PersonEditForm : Form
         }
 
         Person.Type = selectedType;
-        Person.Grade = _grade.Text.Trim();
-        Person.ClassName = _className.Text.Trim();
-        Person.StudentNumber = _studentNumber.Text.Trim();
+        Person.Grade = selectedType == PersonType.Student ? _grade.Text.Trim() : "";
+        Person.ClassName = selectedType == PersonType.Student ? _className.Text.Trim() : "";
+        Person.StudentNumber = selectedType == PersonType.Student ? _studentNumber.Text.Trim() : "";
         Person.LastName = _lastName.Text.Trim();
         Person.FirstName = _firstName.Text.Trim();
         Person.Name = $"{Person.LastName} {Person.FirstName}".Trim();
@@ -437,6 +439,19 @@ public sealed class PersonEditForm : Form
         Person.ActiveTo = _hasActiveTo.Checked ? _activeTo.Value.Date : null;
         Person.Memo = _memo.Text.Trim();
         return true;
+    }
+
+    private void UpdateStudentFields()
+    {
+        if (_type.SelectedIndex < 0)
+        {
+            return;
+        }
+
+        var isStudent = TypeOptions[_type.SelectedIndex].Type == PersonType.Student;
+        _grade.Enabled = isStudent;
+        _className.Enabled = isStudent;
+        _studentNumber.Enabled = isStudent;
     }
 
     private static void SelectComboText(ComboBox comboBox, string value)
