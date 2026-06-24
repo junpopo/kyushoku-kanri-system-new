@@ -202,7 +202,7 @@ public sealed class MainForm : Form
         buttons.Controls.Add(CreateButton("選択を削除", DeleteSelectedPerson, requiresAdmin: true));
         buttons.Controls.Add(CreateButton("名簿を全員削除", DeleteAllPeople, requiresAdmin: true));
         buttons.Controls.Add(CreateButton("配膳場所管理", ManageDeliveryPlaces, requiresAdmin: true));
-        buttons.Controls.Add(CreateButton("クラス別基本数", ManageClassBasicCounts, requiresAdmin: true));
+        buttons.Controls.Add(CreateButton("配膳別基本数", ManageDeliveryPlaceBasicCounts, requiresAdmin: true));
 
         ConfigurePeopleGrid();
         panel.Controls.Add(buttons, 0, 0);
@@ -1266,15 +1266,18 @@ public sealed class MainForm : Form
         RefreshMonthly();
     }
 
-    private void ManageClassBasicCounts()
+    private void ManageDeliveryPlaceBasicCounts()
     {
-        using var dialog = new ClassBasicCountForm(_data.ClassBasicCounts, _data.People);
+        using var dialog = new DeliveryPlaceBasicCountForm(
+            _data.DeliveryPlaceBasicCounts,
+            _data.DeliveryPlaces,
+            _data.People);
         if (dialog.ShowDialog(this) != DialogResult.OK)
         {
             return;
         }
 
-        _data.ClassBasicCounts = dialog.ClassBasicCounts;
+        _data.DeliveryPlaceBasicCounts = dialog.DeliveryPlaceBasicCounts;
         _repository.Save(_data);
     }
 

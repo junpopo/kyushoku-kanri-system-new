@@ -2,33 +2,32 @@ using System.ComponentModel;
 
 namespace KyushokuKanriSystem;
 
-public sealed class ClassBasicCountForm : Form
+public sealed class DeliveryPlaceBasicCountForm : Form
 {
-    private readonly BindingList<ClassBasicCount> _rows;
+    private readonly BindingList<DeliveryPlaceBasicCount> _rows;
+    private readonly IReadOnlyCollection<string> _deliveryPlaces;
     private readonly IReadOnlyCollection<Person> _people;
     private readonly DataGridView _grid = new();
 
-    public List<ClassBasicCount> ClassBasicCounts { get; private set; } = [];
+    public List<DeliveryPlaceBasicCount> DeliveryPlaceBasicCounts { get; private set; } = [];
 
-    public ClassBasicCountForm(
-        IEnumerable<ClassBasicCount> classBasicCounts,
+    public DeliveryPlaceBasicCountForm(
+        IEnumerable<DeliveryPlaceBasicCount> basicCounts,
+        IReadOnlyCollection<string> deliveryPlaces,
         IReadOnlyCollection<Person> people)
     {
+        _deliveryPlaces = deliveryPlaces;
         _people = people;
-        _rows = new BindingList<ClassBasicCount>(classBasicCounts
-            .Select(item => new ClassBasicCount
+        _rows = new BindingList<DeliveryPlaceBasicCount>(basicCounts
+            .Select(item => new DeliveryPlaceBasicCount
             {
-                Grade = item.Grade,
-                ClassName = item.ClassName,
+                DeliveryPlace = item.DeliveryPlace,
                 BasicCount = item.BasicCount
             })
-            .OrderBy(item => SortNumber(item.Grade))
-            .ThenBy(item => item.Grade)
-            .ThenBy(item => SortNumber(item.ClassName))
-            .ThenBy(item => item.ClassName)
+            .OrderBy(item => item.DeliveryPlace)
             .ToList());
 
-        Text = "クラス別基本数";
+        Text = "配膳別基本数";
         Width = 520;
         Height = 500;
         MinimumSize = new Size(460, 380);
@@ -38,7 +37,7 @@ public sealed class ClassBasicCountForm : Form
         MinimizeBox = false;
 
         Controls.Add(CreateLayout());
-        AddClassesFromRoster();
+        AddDeliveryPlaces();
     }
 
     private Control CreateLayout()
@@ -60,7 +59,7 @@ public sealed class ClassBasicCountForm : Form
             AutoSize = true,
             WrapContents = false
         };
-        tools.Controls.Add(CreateButton("名簿からクラスを追加", AddClassesFromRoster));
+        tools.Controls.Add(CreateButton("配膳場所を追加", AddDeliveryPlaces));
         tools.Controls.Add(CreateButton("選択行を削除", DeleteSelectedRow));
 
         ConfigureGrid();
@@ -109,21 +108,15 @@ public sealed class ClassBasicCountForm : Form
         _grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
         _grid.Columns.Add(new DataGridViewTextBoxColumn
         {
-            HeaderText = "学年",
-            DataPropertyName = nameof(ClassBasicCount.Grade),
-            FillWeight = 70
-        });
-        _grid.Columns.Add(new DataGridViewTextBoxColumn
-        {
-            HeaderText = "組",
-            DataPropertyName = nameof(ClassBasicCount.ClassName),
-            FillWeight = 70
+            HeaderText = "配膳場所",
+            DataPropertyName = nameof(DeliveryPlaceBasicCount.DeliveryPlace),
+            FillWeight = 180
         });
         _grid.Columns.Add(new DataGridViewTextBoxColumn
         {
             HeaderText = "基本数",
-            DataPropertyName = nameof(ClassBasicCount.BasicCount),
-            FillWeight = 100
+            DataPropertyName = nameof(DeliveryPlaceBasicCount.BasicCount),
+            FillWeight = 80
         });
         _grid.DataSource = _rows;
         _grid.DataError += (_, eventArgs) =>
@@ -147,46 +140,40 @@ public sealed class ClassBasicCountForm : Form
         return button;
     }
 
-    private void AddClassesFromRoster()
+    private void AddDeliveryPlaces()
     {
         _grid.EndEdit();
-        var classes = _people
-            .Where(person =>
-                person.Type == PersonType.Student &&
-                !string.IsNullOrWhiteSpace(person.Grade) &&
-                !string.IsNullOrWhiteSpace(person.ClassName))
-            .GroupBy(person => new
-            {
-                Grade = person.Grade.Trim(),
-                ClassName = person.ClassName.Trim()
-            })
-            .OrderBy(group => SortNumber(group.Key.Grade))
-            .ThenBy(group => group.Key.Grade)
-            .ThenBy(group => SortNumber(group.Key.ClassName))
-            .ThenBy(group => group.Key.ClassName);
+        var today = DateTime.Today;
+        var places = _deliveryPlaces
+            .Concat(_people.Select(person => person.GetDeliveryPlace(today)))
+            .Where(place => !string.IsNullOrWhiteSpace(place))
+            .Select(place => place.Trim())
+            .Distinct(StringComparer.CurrentCultureIgnoreCase)
+            .OrderBy(place => place);
 
-        foreach (var classGroup in classes)
+        foreach (var place in places)
         {
-            var alreadyExists = _rows.Any(item =>
-                item.Grade.Trim().Equals(classGroup.Key.Grade, StringComparison.CurrentCultureIgnoreCase) &&
-                item.ClassName.Trim().Equals(classGroup.Key.ClassName, StringComparison.CurrentCultureIgnoreCase));
-            if (alreadyExists)
+            if (_rows.Any(item =>
+                item.DeliveryPlace.Trim().Equals(place, StringComparison.CurrentCultureIgnoreCase)))
             {
                 continue;
             }
 
-            _rows.Add(new ClassBasicCount
+            _rows.Add(new DeliveryPlaceBasicCount
             {
-                Grade = classGroup.Key.Grade,
-                ClassName = classGroup.Key.ClassName,
-                BasicCount = classGroup.Count()
+                DeliveryPlace = place,
+                BasicCount = _people.Count(person =>
+                    person.ActiveFrom.Date <= today &&
+                    (person.ActiveTo is null || person.ActiveTo.Value.Date >= today) &&
+                    person.GetDeliveryPlace(today).Trim()
+                        .Equals(place, StringComparison.CurrentCultureIgnoreCase))
             });
         }
     }
 
     private void DeleteSelectedRow()
     {
-        if (_grid.CurrentRow?.DataBoundItem is not ClassBasicCount selected)
+        if (_grid.CurrentRow?.DataBoundItem is not DeliveryPlaceBasicCount selected)
         {
             MessageBox.Show("削除する行を選択してください。");
             return;
@@ -203,25 +190,13 @@ public sealed class ClassBasicCountForm : Form
         }
 
         var normalized = _rows
-            .Where(item =>
-                !string.IsNullOrWhiteSpace(item.Grade) ||
-                !string.IsNullOrWhiteSpace(item.ClassName))
-            .Select(item => new ClassBasicCount
+            .Where(item => !string.IsNullOrWhiteSpace(item.DeliveryPlace))
+            .Select(item => new DeliveryPlaceBasicCount
             {
-                Grade = item.Grade.Trim(),
-                ClassName = item.ClassName.Trim(),
+                DeliveryPlace = item.DeliveryPlace.Trim(),
                 BasicCount = item.BasicCount
             })
             .ToList();
-
-        if (normalized.Any(item =>
-            item.Grade.Length == 0 ||
-            item.ClassName.Length == 0))
-        {
-            MessageBox.Show("学年と組を入力してください。", "入力確認",
-                MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            return;
-        }
 
         if (normalized.Any(item => item.BasicCount < 0))
         {
@@ -231,29 +206,19 @@ public sealed class ClassBasicCountForm : Form
         }
 
         var duplicate = normalized
-            .GroupBy(item => $"{item.Grade}\u001f{item.ClassName}",
-                StringComparer.CurrentCultureIgnoreCase)
+            .GroupBy(item => item.DeliveryPlace, StringComparer.CurrentCultureIgnoreCase)
             .FirstOrDefault(group => group.Count() > 1);
         if (duplicate is not null)
         {
-            var item = duplicate.First();
-            MessageBox.Show($"{item.Grade}年{item.ClassName}組が重複しています。", "入力確認",
+            MessageBox.Show($"{duplicate.Key}が重複しています。", "入力確認",
                 MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return;
         }
 
-        ClassBasicCounts = normalized
-            .OrderBy(item => SortNumber(item.Grade))
-            .ThenBy(item => item.Grade)
-            .ThenBy(item => SortNumber(item.ClassName))
-            .ThenBy(item => item.ClassName)
+        DeliveryPlaceBasicCounts = normalized
+            .OrderBy(item => item.DeliveryPlace)
             .ToList();
         DialogResult = DialogResult.OK;
         Close();
-    }
-
-    private static int SortNumber(string value)
-    {
-        return int.TryParse(value, out var number) ? number : int.MaxValue;
     }
 }
