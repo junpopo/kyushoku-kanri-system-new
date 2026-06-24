@@ -84,7 +84,9 @@ public sealed class LoginForm : Form
         {
             FlowDirection = FlowDirection.RightToLeft,
             Dock = DockStyle.Fill,
-            AutoSize = true
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            Margin = new Padding(0, 6, 0, 0)
         };
         var login = new Button { Text = "ログイン", AutoSize = true, Padding = new Padding(12, 4, 12, 4) };
         var cancel = new Button { Text = "終了", DialogResult = DialogResult.Cancel, AutoSize = true, Padding = new Padding(12, 4, 12, 4) };
@@ -178,6 +180,6 @@ public sealed class LoginForm : Form
         _message.Text = showCredentials ? "" : "一般利用者は閲覧のみです。";
         fields.PerformLayout();
         root.PerformLayout();
-        ClientSize = new Size(364, showCredentials ? 206 : 150);
+        ClientSize = new Size(364, showCredentials ? 225 : 170);
     }
 }
