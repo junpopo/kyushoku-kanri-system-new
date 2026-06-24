@@ -172,7 +172,6 @@ public sealed class MainForm : Form
         _registeredFiscalYearLabel.AutoSize = true;
         _registeredFiscalYearLabel.Padding = new Padding(0, 8, 12, 0);
         top.Controls.Add(_registeredFiscalYearLabel);
-        top.Controls.Add(CreateButton("年度登録", RegisterFiscalYear, requiresAdmin: true));
         top.Controls.Add(new Label { Text = "対象月", AutoSize = true, Padding = new Padding(0, 8, 6, 0) });
         _mealYearLabel.Text = $"{_selectedMealYear}年";
         _mealYearLabel.AutoSize = true;
@@ -229,6 +228,7 @@ public sealed class MainForm : Form
         buttons.Controls.Add(CreateButton("名簿を全員削除", DeleteAllPeople, requiresAdmin: true));
         buttons.Controls.Add(CreateButton("配膳場所管理", ManageDeliveryPlaces, requiresAdmin: true));
         buttons.Controls.Add(CreateButton("配膳別基本数", ManageDeliveryPlaceBasicCounts, requiresAdmin: true));
+        buttons.Controls.Add(CreateButton("年度登録", RegisterFiscalYear, requiresAdmin: true));
 
         ConfigurePeopleGrid();
         panel.Controls.Add(buttons, 0, 0);
