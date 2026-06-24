@@ -583,7 +583,7 @@ public sealed class MainForm : Form
         }
 
         _data.People.Add(dialog.Person);
-        SaveAll();
+        SaveAll(dialog.Person.Id);
     }
 
     private void EditSelectedPerson()
@@ -621,7 +621,7 @@ public sealed class MainForm : Form
         selected.ActiveFrom = dialog.Person.ActiveFrom;
         selected.ActiveTo = dialog.Person.ActiveTo;
         selected.Memo = dialog.Person.Memo;
-        SaveAll();
+        SaveAll(selected.Id);
     }
 
     private void ManageDeliveryPlaces()
@@ -703,13 +703,36 @@ public sealed class MainForm : Form
         MessageBox.Show("保存しました。", "日別管理", MessageBoxButtons.OK, MessageBoxIcon.Information);
     }
 
-    private void SaveAll()
+    private void SaveAll(Guid? selectedPersonId = null)
     {
         _repository.Save(_data);
         RefreshPeople();
+        RestorePeopleSelection(selectedPersonId);
         RefreshDaily();
         RefreshMonthly();
         RefreshSummary();
+    }
+
+    private void RestorePeopleSelection(Guid? personId)
+    {
+        if (personId is null)
+        {
+            return;
+        }
+
+        foreach (DataGridViewRow gridRow in _peopleGrid.Rows)
+        {
+            if (gridRow.DataBoundItem is not PersonRow row || row.Id != personId)
+            {
+                continue;
+            }
+
+            _peopleGrid.ClearSelection();
+            gridRow.Selected = true;
+            _peopleGrid.CurrentCell = gridRow.Cells[0];
+            _peopleGrid.FirstDisplayedScrollingRowIndex = gridRow.Index;
+            return;
+        }
     }
 
     private void UpdateDailyTotal()
