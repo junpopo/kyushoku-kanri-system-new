@@ -215,8 +215,9 @@ public sealed class DeliveryPlaceBasicCountForm : Form
         _rows.Clear();
         foreach (var item in _allCounts
             .Where(item => item.FiscalYear == fiscalYear)
-            .OrderBy(item => item.DeliveryPlace)
-            .ThenBy(item => item.Category))
+            .OrderBy(item => DeliveryPlaceSortKey(item.DeliveryPlace))
+            .ThenBy(item => item.DeliveryPlace)
+            .ThenBy(item => CategorySortKey(item.Category)))
         {
             _rows.Add(Clone(item));
         }
@@ -308,7 +309,8 @@ public sealed class DeliveryPlaceBasicCountForm : Form
             .Where(place => !string.IsNullOrWhiteSpace(place))
             .Select(NormalizePlace)
             .Distinct(StringComparer.CurrentCultureIgnoreCase)
-            .OrderBy(place => place);
+            .OrderBy(DeliveryPlaceSortKey)
+            .ThenBy(place => place);
     }
 
     private void DeleteSelectedRow()
@@ -382,8 +384,9 @@ public sealed class DeliveryPlaceBasicCountForm : Form
 
         DeliveryPlaceBasicCounts = _allCounts
             .OrderBy(item => item.FiscalYear)
+            .ThenBy(item => DeliveryPlaceSortKey(item.DeliveryPlace))
             .ThenBy(item => item.DeliveryPlace)
-            .ThenBy(item => item.Category)
+            .ThenBy(item => CategorySortKey(item.Category))
             .Select(Clone)
             .ToList();
         DialogResult = DialogResult.OK;
@@ -501,6 +504,28 @@ public sealed class DeliveryPlaceBasicCountForm : Form
     private static string BasicCategory(Person person)
     {
         return person.Type == PersonType.Student ? "生徒" : "職員";
+    }
+
+    private static int CategorySortKey(string category)
+    {
+        return category == "生徒" ? 0 : 1;
+    }
+
+    private static int DeliveryPlaceSortKey(string deliveryPlace)
+    {
+        if (NormalizePlace(deliveryPlace)
+            .Equals("職員室", StringComparison.CurrentCultureIgnoreCase))
+        {
+            return 20000;
+        }
+
+        var match = System.Text.RegularExpressions.Regex.Match(
+            deliveryPlace,
+            @"(?<grade>\d+)年(?<class>\d+)組");
+        return match.Success
+            ? int.Parse(match.Groups["grade"].Value) * 100 +
+              int.Parse(match.Groups["class"].Value)
+            : 10000;
     }
 
 }
