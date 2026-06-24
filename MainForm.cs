@@ -408,7 +408,25 @@ public sealed class MainForm : Form
         _monthlyGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "牛乳数", DataPropertyName = nameof(MonthlyMealRow.Milk), FillWeight = 65 });
         _monthlyGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "アレルギー対応数", DataPropertyName = nameof(MonthlyMealRow.AllergySupport), FillWeight = 105 });
         _monthlyGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "停止・欠席数", DataPropertyName = nameof(MonthlyMealRow.StoppedOrAbsent), FillWeight = 90 });
+        _monthlyGrid.Columns.Add(new DataGridViewButtonColumn
+        {
+            HeaderText = "詳細",
+            Text = "確認",
+            UseColumnTextForButtonValue = true,
+            FillWeight = 55
+        });
         _monthlyGrid.DataSource = _monthlyRows;
+        _monthlyGrid.CellContentClick += (_, eventArgs) =>
+        {
+            if (eventArgs.RowIndex < 0 ||
+                eventArgs.ColumnIndex != _monthlyGrid.Columns.Count - 1 ||
+                _monthlyGrid.Rows[eventArgs.RowIndex].DataBoundItem is not MonthlyMealRow row)
+            {
+                return;
+            }
+
+            ShowStoppedOrAbsentDetails(row);
+        };
     }
 
     private void RefreshPeople()
@@ -610,6 +628,51 @@ public sealed class MainForm : Form
         }
 
         _monthlyDetailLabel.Text = $"{date:yyyy年M月d日}（{JapaneseDayOfWeek(date.DayOfWeek)}）の配膳場所別内訳";
+    }
+
+    private void ShowStoppedOrAbsentDetails(MonthlyMealRow monthlyRow)
+    {
+        var details = _data.People
+            .Where(person =>
+                person.ActiveFrom.Date <= monthlyRow.DateValue.Date &&
+                (person.ActiveTo is null || person.ActiveTo.Value.Date >= monthlyRow.DateValue.Date) &&
+                NormalizeDeliveryPlace(person.GetDeliveryPlace(monthlyRow.DateValue)) ==
+                NormalizeDeliveryPlace(monthlyRow.DeliveryPlace))
+            .Select(person =>
+            {
+                var record = _data.MealRecords.FirstOrDefault(item =>
+                    item.PersonId == person.Id && item.Date.Date == monthlyRow.DateValue.Date);
+                var status = GetMealStatus(person, monthlyRow.DateValue);
+                return new MealStatusDetail
+                {
+                    Type = person.TypeLabel,
+                    Grade = person.Grade,
+                    ClassName = person.ClassName,
+                    StudentNumber = person.StudentNumber,
+                    Name = person.FullName,
+                    Status = StatusToLabel(status),
+                    Reason = record?.Reason ??
+                             (!person.EatsOn(monthlyRow.DateValue.DayOfWeek) ? "喫食日ではありません" : "")
+                };
+            })
+            .Where(detail => detail.Status != "提供")
+            .OrderBy(detail => detail.Type)
+            .ThenBy(detail => detail.Grade)
+            .ThenBy(detail => detail.ClassName)
+            .ThenBy(detail => ToNumber(detail.StudentNumber))
+            .ThenBy(detail => detail.Name)
+            .ToList();
+
+        using var dialog = new MealStatusDetailsForm(
+            monthlyRow.DateValue,
+            monthlyRow.DeliveryPlace,
+            details);
+        dialog.ShowDialog(this);
+    }
+
+    private static string NormalizeDeliveryPlace(string place)
+    {
+        return string.IsNullOrWhiteSpace(place) ? "未設定" : place.Trim();
     }
 
     private MealStatus GetMealStatus(Person person, DateTime date)
@@ -1038,6 +1101,17 @@ public sealed class MainForm : Form
         public int Milk { get; init; }
         public int AllergySupport { get; init; }
         public int StoppedOrAbsent { get; init; }
+    }
+
+    public sealed class MealStatusDetail
+    {
+        public string Type { get; init; } = "";
+        public string Grade { get; init; } = "";
+        public string ClassName { get; init; } = "";
+        public string StudentNumber { get; init; } = "";
+        public string Name { get; init; } = "";
+        public string Status { get; init; } = "";
+        public string Reason { get; init; } = "";
     }
 
     private static string FormatEatDays(Person person)
