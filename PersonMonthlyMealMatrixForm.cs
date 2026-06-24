@@ -18,8 +18,8 @@ public sealed class PersonMonthlyMealMatrixForm : Form
 
         Text = "月間喫食状況";
         Width = 1320;
-        Height = 310;
-        MinimumSize = new Size(1000, 280);
+        Height = 350;
+        MinimumSize = new Size(1000, 320);
         StartPosition = FormStartPosition.CenterParent;
 
         Controls.Add(CreateLayout());
@@ -49,7 +49,7 @@ public sealed class PersonMonthlyMealMatrixForm : Form
         };
         var legend = new Label
         {
-            Text = "○ 喫食　停 停止　欠 欠席　－ 非喫食日　外 在籍期間外",
+            Text = "給食: ○ 喫食　牛乳: 有 あり／無 なし　停 停止　欠 欠席　－ 非喫食日　外 在籍期間外",
             AutoSize = true,
             ForeColor = Color.FromArgb(55, 65, 75),
             Margin = new Padding(0, 0, 0, 8)
@@ -106,8 +106,8 @@ public sealed class PersonMonthlyMealMatrixForm : Form
 
         _grid.Columns.Add(new DataGridViewTextBoxColumn
         {
-            HeaderText = "氏名",
-            Width = 120,
+            HeaderText = "項目",
+            Width = 70,
             Frozen = true
         });
 
@@ -123,24 +123,30 @@ public sealed class PersonMonthlyMealMatrixForm : Form
             });
         }
 
-        var values = new object[daysInMonth + 1];
-        values[0] = _person.FullName;
-        for (var day = 1; day <= daysInMonth; day++)
-        {
-            values[day] = StatusLabel(new DateTime(_month.Year, _month.Month, day));
-        }
-
-        var row = _grid.Rows[_grid.Rows.Add(values)];
-        row.Cells[0].Style.Alignment = DataGridViewContentAlignment.MiddleLeft;
-        row.Cells[0].Style.Font = new Font(_grid.Font, FontStyle.Bold);
+        var mealValues = new object[daysInMonth + 1];
+        var milkValues = new object[daysInMonth + 1];
+        mealValues[0] = "給食";
+        milkValues[0] = "牛乳";
         for (var day = 1; day <= daysInMonth; day++)
         {
             var date = new DateTime(_month.Year, _month.Month, day);
-            StyleStatusCell(row.Cells[day], date);
+            mealValues[day] = MealStatusLabel(date);
+            milkValues[day] = MilkStatusLabel(date);
+        }
+
+        var mealRow = _grid.Rows[_grid.Rows.Add(mealValues)];
+        var milkRow = _grid.Rows[_grid.Rows.Add(milkValues)];
+        mealRow.Cells[0].Style.Font = new Font(_grid.Font, FontStyle.Bold);
+        milkRow.Cells[0].Style.Font = new Font(_grid.Font, FontStyle.Bold);
+        for (var day = 1; day <= daysInMonth; day++)
+        {
+            var date = new DateTime(_month.Year, _month.Month, day);
+            StyleStatusCell(mealRow.Cells[day], date, "給食");
+            StyleStatusCell(milkRow.Cells[day], date, "牛乳");
         }
     }
 
-    private string StatusLabel(DateTime date)
+    private string MealStatusLabel(DateTime date)
     {
         if (!IsActive(date))
         {
@@ -162,15 +168,31 @@ public sealed class PersonMonthlyMealMatrixForm : Form
         return _person.EatsOn(date.DayOfWeek) ? "○" : "－";
     }
 
-    private void StyleStatusCell(DataGridViewCell cell, DateTime date)
+    private string MilkStatusLabel(DateTime date)
+    {
+        var mealStatus = MealStatusLabel(date);
+        return mealStatus == "○"
+            ? _person.HasMilk ? "有" : "無"
+            : mealStatus;
+    }
+
+    private void StyleStatusCell(DataGridViewCell cell, DateTime date, string item)
     {
         var label = Convert.ToString(cell.Value) ?? "";
-        cell.ToolTipText = $"{date:yyyy年M月d日} {FullStatusLabel(label)}";
+        cell.ToolTipText = $"{date:yyyy年M月d日} {item}: {FullStatusLabel(label)}";
         switch (label)
         {
             case "○":
                 cell.Style.BackColor = Color.FromArgb(220, 242, 228);
                 cell.Style.ForeColor = Color.FromArgb(24, 105, 58);
+                break;
+            case "有":
+                cell.Style.BackColor = Color.FromArgb(218, 235, 252);
+                cell.Style.ForeColor = Color.FromArgb(25, 80, 135);
+                break;
+            case "無":
+                cell.Style.BackColor = Color.FromArgb(240, 240, 240);
+                cell.Style.ForeColor = Color.FromArgb(90, 90, 90);
                 break;
             case "停":
                 cell.Style.BackColor = Color.FromArgb(255, 235, 200);
@@ -200,6 +222,8 @@ public sealed class PersonMonthlyMealMatrixForm : Form
         return label switch
         {
             "○" => "喫食",
+            "有" => "あり",
+            "無" => "なし",
             "停" => "停止",
             "欠" => "欠席",
             "外" => "在籍期間外",
