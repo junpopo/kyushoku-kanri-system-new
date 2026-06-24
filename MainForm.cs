@@ -35,6 +35,7 @@ public sealed class MainForm : Form
         Height = 760;
         MinimumSize = new Size(980, 640);
         StartPosition = FormStartPosition.CenterScreen;
+        WindowState = FormWindowState.Maximized;
 
         Controls.Add(CreateLayout());
         RefreshPeople();
@@ -350,14 +351,17 @@ public sealed class MainForm : Form
         _monthlyGrid.AllowUserToDeleteRows = false;
         _monthlyGrid.AutoGenerateColumns = false;
         _monthlyGrid.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+        _monthlyGrid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+        _monthlyGrid.ScrollBars = ScrollBars.Vertical;
+        _monthlyGrid.RowHeadersVisible = false;
         _monthlyGrid.Columns.Clear();
-        _monthlyGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "日付", DataPropertyName = nameof(MonthlyMealRow.Date), Width = 95 });
-        _monthlyGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "曜日", DataPropertyName = nameof(MonthlyMealRow.DayOfWeek), Width = 60 });
-        _monthlyGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "配膳場所", DataPropertyName = nameof(MonthlyMealRow.DeliveryPlace), Width = 180 });
-        _monthlyGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "提供数", DataPropertyName = nameof(MonthlyMealRow.Served), Width = 80 });
-        _monthlyGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "牛乳数", DataPropertyName = nameof(MonthlyMealRow.Milk), Width = 80 });
-        _monthlyGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "アレルギー対応数", DataPropertyName = nameof(MonthlyMealRow.AllergySupport), Width = 120 });
-        _monthlyGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "停止・欠席数", DataPropertyName = nameof(MonthlyMealRow.StoppedOrAbsent), Width = 110 });
+        _monthlyGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "日付", DataPropertyName = nameof(MonthlyMealRow.Date), FillWeight = 70 });
+        _monthlyGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "曜日", DataPropertyName = nameof(MonthlyMealRow.DayOfWeek), FillWeight = 45 });
+        _monthlyGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "配膳場所", DataPropertyName = nameof(MonthlyMealRow.DeliveryPlace), FillWeight = 145 });
+        _monthlyGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "提供数", DataPropertyName = nameof(MonthlyMealRow.Served), FillWeight = 65 });
+        _monthlyGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "牛乳数", DataPropertyName = nameof(MonthlyMealRow.Milk), FillWeight = 65 });
+        _monthlyGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "アレルギー対応数", DataPropertyName = nameof(MonthlyMealRow.AllergySupport), FillWeight = 105 });
+        _monthlyGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "停止・欠席数", DataPropertyName = nameof(MonthlyMealRow.StoppedOrAbsent), FillWeight = 90 });
         _monthlyGrid.DataSource = _monthlyRows;
     }
 
