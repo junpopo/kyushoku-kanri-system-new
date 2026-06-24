@@ -483,14 +483,14 @@ public sealed class MainForm : Form
         {
             if (eventArgs.RowIndex < 0 ||
                 eventArgs.ColumnIndex < 2 ||
-                _monthlyMatrixGrid.Rows[eventArgs.RowIndex].Tag is not string deliveryPlace ||
+                _monthlyMatrixGrid.Rows[eventArgs.RowIndex].Tag is not MonthlyMatrixRowTag rowTag ||
                 _monthlyMatrixGrid.Columns[eventArgs.ColumnIndex].Tag is not DateTime date ||
-                !IsStaffRoom(deliveryPlace))
+                !IsStaffRoom(rowTag.DeliveryPlace))
             {
                 return;
             }
 
-            ShowServedPeopleDetails(date, deliveryPlace);
+            ShowServedPeopleDetails(date, rowTag.DeliveryPlace, rowTag.Type);
         };
     }
 
@@ -659,7 +659,7 @@ public sealed class MainForm : Form
             values[^1] = monthTotal;
             var rowIndex = _monthlyMatrixGrid.Rows.Add(values);
             var matrixRow = _monthlyMatrixGrid.Rows[rowIndex];
-            matrixRow.Tag = group.Key.DeliveryPlace;
+            matrixRow.Tag = new MonthlyMatrixRowTag(group.Key.DeliveryPlace, group.Key.Type);
             if (firstPerson.Type != PersonType.Student)
             {
                 matrixRow.DefaultCellStyle.BackColor = Color.FromArgb(232, 241, 250);
@@ -745,10 +745,14 @@ public sealed class MainForm : Form
             .Equals("職員室", StringComparison.CurrentCultureIgnoreCase);
     }
 
-    private void ShowServedPeopleDetails(DateTime date, string deliveryPlace)
+    private void ShowServedPeopleDetails(
+        DateTime date,
+        string deliveryPlace,
+        PersonType personType)
     {
         var people = _data.People
             .Where(person =>
+                person.Type == personType &&
                 IsActive(person, date) &&
                 IsStaffRoom(person.GetDeliveryPlace(date)) &&
                 GetMealStatus(person, date) == MealStatus.Serve)
@@ -757,8 +761,26 @@ public sealed class MainForm : Form
             .ThenBy(person => person.FirstName)
             .ToList();
 
-        using var dialog = new ServedPeopleDetailsForm(date, deliveryPlace, people);
+        var typeLabel = people.FirstOrDefault()?.TypeLabel ?? PersonTypeLabel(personType);
+        using var dialog = new ServedPeopleDetailsForm(
+            date,
+            $"{deliveryPlace} / {typeLabel}",
+            people);
         dialog.ShowDialog(this);
+    }
+
+    private static string PersonTypeLabel(PersonType personType)
+    {
+        return personType switch
+        {
+            PersonType.Staff => "職員",
+            PersonType.Student => "生徒",
+            PersonType.Alt => "ALT",
+            PersonType.Trainee => "教育実習生",
+            PersonType.Tasting => "試食会",
+            PersonType.Guest => "ゲスト",
+            _ => ""
+        };
     }
 
     private void AddMonthlyMatrixSummaryRow(
@@ -1416,6 +1438,8 @@ public sealed class MainForm : Form
         public int AllergySupport { get; init; }
         public int StoppedOrAbsent { get; init; }
     }
+
+    private sealed record MonthlyMatrixRowTag(string DeliveryPlace, PersonType Type);
 
     public sealed class MealStatusDetail
     {
