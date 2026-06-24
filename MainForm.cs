@@ -21,11 +21,15 @@ public sealed class MainForm : Form
     private readonly TableLayoutPanel _monthlyCalendar = new();
     private readonly DataGridView _summaryGrid = new();
     private readonly DateTimePicker _mealDatePicker = new();
-    private readonly DateTimePicker _mealMonthPicker = new();
+    private readonly Label _mealYearLabel = new();
+    private readonly ComboBox _mealMonthCombo = new();
     private readonly Label _dailyTotalLabel = new();
     private readonly Label _monthlyTotalLabel = new();
     private readonly Label _monthlyDetailLabel = new();
     private DateTime _selectedMonthlyDate = DateTime.Today;
+    private int _selectedMealYear = DateTime.Today.Year;
+    private int _selectedMealMonth = DateTime.Today.Month;
+    private bool _updatingMealMonth;
 
     public MainForm(AppUser? currentUser = null)
     {
@@ -156,13 +160,21 @@ public sealed class MainForm : Form
             AutoSize = true,
             WrapContents = false
         };
-        _mealMonthPicker.Format = DateTimePickerFormat.Custom;
-        _mealMonthPicker.CustomFormat = "yyyy年MM月";
-        _mealMonthPicker.ShowUpDown = true;
-        _mealMonthPicker.Width = 130;
-        _mealMonthPicker.ValueChanged += (_, _) => RefreshMonthly();
         top.Controls.Add(new Label { Text = "対象月", AutoSize = true, Padding = new Padding(0, 8, 6, 0) });
-        top.Controls.Add(_mealMonthPicker);
+        _mealYearLabel.Text = $"{_selectedMealYear}年";
+        _mealYearLabel.AutoSize = true;
+        _mealYearLabel.Padding = new Padding(0, 8, 4, 0);
+        top.Controls.Add(_mealYearLabel);
+
+        _mealMonthCombo.DropDownStyle = ComboBoxStyle.DropDownList;
+        _mealMonthCombo.Width = 65;
+        _mealMonthCombo.Items.AddRange(
+            Enumerable.Range(1, 12).Select(month => $"{month}月").ToArray());
+        _updatingMealMonth = true;
+        _mealMonthCombo.SelectedIndex = _selectedMealMonth - 1;
+        _updatingMealMonth = false;
+        _mealMonthCombo.SelectedIndexChanged += (_, _) => ChangeMealMonth();
+        top.Controls.Add(_mealMonthCombo);
         top.Controls.Add(CreateButton("更新", RefreshMonthly));
 
         _monthlyTotalLabel.AutoSize = true;
@@ -534,7 +546,7 @@ public sealed class MainForm : Form
     private void RefreshMonthly()
     {
         _monthlyAllRows.Clear();
-        var month = new DateTime(_mealMonthPicker.Value.Year, _mealMonthPicker.Value.Month, 1);
+        var month = new DateTime(_selectedMealYear, _selectedMealMonth, 1);
         var lastDate = month.AddMonths(1).AddDays(-1);
 
         for (var date = month; date <= lastDate; date = date.AddDays(1))
@@ -581,6 +593,28 @@ public sealed class MainForm : Form
         var milk = _monthlyAllRows.Sum(row => row.Milk);
         var allergy = _monthlyAllRows.Sum(row => row.AllergySupport);
         _monthlyTotalLabel.Text = $"月合計  提供: {served} / 牛乳: {milk} / アレルギー対応: {allergy}";
+    }
+
+    private void ChangeMealMonth()
+    {
+        if (_updatingMealMonth || _mealMonthCombo.SelectedIndex < 0)
+        {
+            return;
+        }
+
+        var newMonth = _mealMonthCombo.SelectedIndex + 1;
+        if (_selectedMealMonth == 12 && newMonth == 1)
+        {
+            _selectedMealYear++;
+        }
+        else if (_selectedMealMonth == 1 && newMonth == 12)
+        {
+            _selectedMealYear--;
+        }
+
+        _selectedMealMonth = newMonth;
+        _mealYearLabel.Text = $"{_selectedMealYear}年";
+        RefreshMonthly();
     }
 
     private void RefreshMonthlyMatrix(DateTime month)
