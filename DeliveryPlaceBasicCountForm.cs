@@ -23,21 +23,23 @@ public sealed class DeliveryPlaceBasicCountForm : Form
         _people = people;
         _loadedFiscalYear = initialFiscalYear;
         _allCounts = basicCounts.Select(item =>
-        {
-            var copy = item.FiscalYear != 0
-                ? Clone(item)
-                : CreateForecastRow(
-                    _loadedFiscalYear,
-                    item.DeliveryPlace,
-                    "生徒",
-                    item.BasicCount);
-            if (string.IsNullOrWhiteSpace(copy.Category))
             {
-                copy.Category = "生徒";
-            }
+                var copy = item.FiscalYear != 0
+                    ? Clone(item)
+                    : CreateForecastRow(
+                        _loadedFiscalYear,
+                        item.DeliveryPlace,
+                        "生徒",
+                        item.BasicCount);
+                if (string.IsNullOrWhiteSpace(copy.Category))
+                {
+                    copy.Category = "生徒";
+                }
 
-            return copy;
-        }).ToList();
+                return copy;
+            })
+            .Where(item => !IsStaffRoomStudent(item))
+            .ToList();
 
         Text = "配膳別基本数（月別）";
         Width = 1120;
@@ -257,7 +259,7 @@ public sealed class DeliveryPlaceBasicCountForm : Form
         _rows.Clear();
         foreach (var place in places)
         {
-            foreach (var category in new[] { "生徒", "職員" })
+            foreach (var category in CategoriesForPlace(place))
             {
                 var aprilCount = counts.GetValueOrDefault($"{place}\u001f{category}");
                 _rows.Add(CreateForecastRow(fiscalYear, place, category, aprilCount));
@@ -288,7 +290,7 @@ public sealed class DeliveryPlaceBasicCountForm : Form
 
         foreach (var place in KnownPlaces(aprilDate))
         {
-            foreach (var category in new[] { "生徒", "職員" })
+            foreach (var category in CategoriesForPlace(place))
             {
                 if (_rows.Any(item =>
                     item.DeliveryPlace.Trim().Equals(place, StringComparison.CurrentCultureIgnoreCase) &&
@@ -501,6 +503,18 @@ public sealed class DeliveryPlaceBasicCountForm : Form
         return person.Type == PersonType.Student ? "生徒" : "職員";
     }
 
+    private static IEnumerable<string> CategoriesForPlace(string deliveryPlace)
+    {
+        return IsStaffRoom(deliveryPlace)
+            ? new[] { "職員" }
+            : new[] { "生徒", "職員" };
+    }
+
+    private static bool IsStaffRoomStudent(DeliveryPlaceBasicCount item)
+    {
+        return IsStaffRoom(item.DeliveryPlace) && item.Category == "生徒";
+    }
+
     private static int CategorySortKey(string category)
     {
         return category == "生徒" ? 0 : 1;
@@ -527,8 +541,7 @@ public sealed class DeliveryPlaceBasicCountForm : Form
 
     private static int DeliveryPlaceSortKey(string deliveryPlace)
     {
-        if (NormalizePlace(deliveryPlace)
-            .Equals("職員室", StringComparison.CurrentCultureIgnoreCase))
+        if (IsStaffRoom(deliveryPlace))
         {
             return 20000;
         }
@@ -540,6 +553,12 @@ public sealed class DeliveryPlaceBasicCountForm : Form
             ? int.Parse(match.Groups["grade"].Value) * 100 +
               int.Parse(match.Groups["class"].Value)
             : 10000;
+    }
+
+    private static bool IsStaffRoom(string deliveryPlace)
+    {
+        return NormalizePlace(deliveryPlace)
+            .Equals("職員室", StringComparison.CurrentCultureIgnoreCase);
     }
 
 }
