@@ -504,6 +504,18 @@ public sealed class MainForm : Form
         _monthlyMatrixGrid.ColumnHeadersDefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
         _monthlyMatrixGrid.ColumnHeadersHeight = 42;
         _monthlyMatrixGrid.RowTemplate.Height = 24;
+        _monthlyMatrixGrid.CellClick += (_, eventArgs) =>
+        {
+            if (eventArgs.RowIndex < 0 ||
+                eventArgs.ColumnIndex < 3 ||
+                _monthlyMatrixGrid.Columns[eventArgs.ColumnIndex].Tag is not DateTime date ||
+                _monthlyMatrixGrid.Rows[eventArgs.RowIndex].Tag is not MonthlySummaryRowTag.MilkStopped)
+            {
+                return;
+            }
+
+            ShowMilkStoppedPeopleDetails(date);
+        };
         _monthlyMatrixGrid.CellDoubleClick += (_, eventArgs) =>
         {
             if (eventArgs.RowIndex < 0 ||
@@ -789,13 +801,19 @@ public sealed class MainForm : Form
         AddMonthlyMatrixSummaryRow("給食合計", month, daysInMonth,
             date => CountMeals(date, person => person.Type != PersonType.Tasting),
             Color.FromArgb(224, 239, 252));
-        AddMonthlyMatrixSummaryRow("牛乳数", month, daysInMonth,
+        var milkRow = AddMonthlyMatrixSummaryRow("牛乳数", month, daysInMonth,
             date => _data.People.Count(person =>
                 person.Type != PersonType.Tasting &&
                 IsActive(person, date) &&
                 person.HasMilk &&
                 GetMealStatus(person, date) == MealStatus.Serve),
             Color.FromArgb(226, 243, 235));
+        milkRow.Tag = MonthlySummaryRowTag.MilkStopped;
+        for (var day = 1; day <= daysInMonth; day++)
+        {
+            milkRow.Cells[day + 2].ToolTipText =
+                "クリックすると牛乳を停止している人を確認できます。";
+        }
         var allergyRow = AddMonthlyMatrixSummaryRow("アレルギー対応", month, daysInMonth,
             date => _data.People.Count(person =>
                 IsActive(person, date) &&
@@ -939,6 +957,29 @@ public sealed class MainForm : Form
         using var dialog = new ServedPeopleDetailsForm(
             date,
             "アレルギー対応",
+            people,
+            _data.MealRecords);
+        dialog.ShowDialog(this);
+    }
+
+    private void ShowMilkStoppedPeopleDetails(DateTime date)
+    {
+        var people = _data.People
+            .Where(person =>
+                person.Type != PersonType.Tasting &&
+                IsActive(person, date) &&
+                !person.HasMilk &&
+                GetMealStatus(person, date) == MealStatus.Serve)
+            .OrderBy(person => DeliveryPlaceSortKey(person.GetDeliveryPlace(date)))
+            .ThenBy(person => person.GetDeliveryPlace(date))
+            .ThenBy(person => person.Type)
+            .ThenBy(person => person.LastName)
+            .ThenBy(person => person.FirstName)
+            .ToList();
+
+        using var dialog = new ServedPeopleDetailsForm(
+            date,
+            "牛乳停止",
             people,
             _data.MealRecords);
         dialog.ShowDialog(this);
@@ -1671,7 +1712,8 @@ public sealed class MainForm : Form
 
     private enum MonthlySummaryRowTag
     {
-        Allergy
+        Allergy,
+        MilkStopped
     }
 
     public sealed class MealStatusDetail
