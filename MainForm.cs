@@ -698,7 +698,6 @@ public sealed class MainForm : Form
             Color.FromArgb(224, 239, 252));
         AddMonthlyMatrixSummaryRow("職員室合計", month, daysInMonth,
             date => CountMeals(date, person =>
-                person.Type == PersonType.Staff &&
                 IsStaffRoom(person.GetDeliveryPlace(date))),
             Color.FromArgb(232, 241, 250));
         AddMonthlyMatrixSummaryRow("教室職員合計", month, daysInMonth,
