@@ -56,8 +56,12 @@ public sealed class LoginForm : Form
         fields.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 85));
         fields.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
-        _loginId.Dock = DockStyle.Fill;
-        _password.Dock = DockStyle.Fill;
+        _loginId.Width = 120;
+        _loginId.Anchor = AnchorStyles.Left;
+        _loginId.MaxLength = 30;
+        _password.Width = 120;
+        _password.Anchor = AnchorStyles.Left;
+        _password.MaxLength = 30;
         _password.UseSystemPasswordChar = true;
         _loginType.Dock = DockStyle.Fill;
         _loginType.DropDownStyle = ComboBoxStyle.DropDownList;
@@ -103,6 +107,10 @@ public sealed class LoginForm : Form
     {
         panel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         panel.Controls.Add(new Label { Text = labelText, AutoSize = true, Padding = new Padding(0, 6, 0, 0) }, 0, row);
+        if (input is not TextBox)
+        {
+            input.Dock = DockStyle.Fill;
+        }
         input.Margin = new Padding(0, 1, 0, 5);
         panel.Controls.Add(input, 1, row);
     }
