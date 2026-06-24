@@ -34,7 +34,7 @@ public sealed class LoginForm : Form
             Padding = new Padding(16)
         };
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
         var title = new Label
@@ -69,9 +69,12 @@ public sealed class LoginForm : Form
         AddRow(fields, 0, "ログイン区分", _loginType);
         AddRow(fields, 1, "ログインID", _loginId);
         AddRow(fields, 2, "パスワード", _password);
-        fields.Controls.Add(_message, 1, 3);
-        _loginType.SelectedIndexChanged += (_, _) => UpdateCredentialFields(fields);
-        UpdateCredentialFields(fields);
+        fields.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        _message.Dock = DockStyle.Fill;
+        _message.TextAlign = ContentAlignment.MiddleLeft;
+        _message.Margin = new Padding(0, 3, 0, 6);
+        fields.Controls.Add(_message, 0, 3);
+        fields.SetColumnSpan(_message, 2);
 
         var buttons = new FlowLayoutPanel
         {
@@ -91,6 +94,8 @@ public sealed class LoginForm : Form
         root.Controls.Add(title, 0, 0);
         root.Controls.Add(fields, 0, 1);
         root.Controls.Add(buttons, 0, 2);
+        _loginType.SelectedIndexChanged += (_, _) => UpdateCredentialFields(fields, root);
+        UpdateCredentialFields(fields, root);
         return root;
     }
 
@@ -145,13 +150,13 @@ public sealed class LoginForm : Form
         Close();
     }
 
-    private void UpdateCredentialFields(TableLayoutPanel fields)
+    private void UpdateCredentialFields(TableLayoutPanel fields, TableLayoutPanel root)
     {
         var showCredentials = _loginType.SelectedIndex == 0;
         for (var row = 1; row <= 2; row++)
         {
             fields.RowStyles[row].SizeType = showCredentials ? SizeType.AutoSize : SizeType.Absolute;
-            fields.RowStyles[row].Height = showCredentials ? 0 : 0;
+            fields.RowStyles[row].Height = 0;
             for (var column = 0; column < fields.ColumnCount; column++)
             {
                 var control = fields.GetControlFromPosition(column, row);
@@ -163,6 +168,8 @@ public sealed class LoginForm : Form
         }
 
         _message.Text = showCredentials ? "" : "一般利用者は閲覧のみです。";
-        Height = showCredentials ? 245 : 190;
+        fields.PerformLayout();
+        root.PerformLayout();
+        ClientSize = new Size(364, showCredentials ? 206 : 150);
     }
 }
