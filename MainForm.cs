@@ -128,12 +128,10 @@ public sealed class MainForm : Form
         var tabs = new TabControl { Dock = DockStyle.Fill };
         tabs.TabPages.Add(CreatePeoplePage());
         tabs.TabPages.Add(CreateMonthlyPage());
-        tabs.TabPages.Add(CreateSummaryPage());
         ConfigureColoredTabs(tabs,
         [
             Color.FromArgb(214, 235, 252),
-            Color.FromArgb(218, 242, 226),
-            Color.FromArgb(255, 235, 204)
+            Color.FromArgb(218, 242, 226)
         ]);
         return tabs;
     }
