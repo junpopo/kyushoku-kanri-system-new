@@ -239,6 +239,7 @@ public sealed class DeliveryPlaceBasicCountForm : Form
             AddMissingDeliveryPlaces();
         }
 
+        RefreshStaffRoomStaffCount(aprilDate);
         SortRows();
     }
 
@@ -490,6 +491,39 @@ public sealed class DeliveryPlaceBasicCountForm : Form
     private static string BasicCategory(Person person)
     {
         return person.Type == PersonType.Student ? "生徒" : "職員";
+    }
+
+    private void RefreshStaffRoomStaffCount(DateTime aprilDate)
+    {
+        var count = _people.Count(person =>
+            IsActive(person, aprilDate) &&
+            person.Type == PersonType.Staff &&
+            IsStaffRoom(person.GetDeliveryPlace(aprilDate)));
+        var row = _rows.FirstOrDefault(item =>
+            IsStaffRoom(item.DeliveryPlace) &&
+            item.Category == "職員");
+        if (row is null)
+        {
+            return;
+        }
+
+        SetAllMonths(row, count);
+    }
+
+    private static void SetAllMonths(DeliveryPlaceBasicCount item, int value)
+    {
+        item.April = value;
+        item.May = value;
+        item.June = value;
+        item.July = value;
+        item.August = value;
+        item.September = value;
+        item.October = value;
+        item.November = value;
+        item.December = value;
+        item.January = value;
+        item.February = value;
+        item.March = value;
     }
 
     private static bool IsStaffRoomStudent(DeliveryPlaceBasicCount item)
