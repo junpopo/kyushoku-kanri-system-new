@@ -704,7 +704,8 @@ public sealed class MainForm : Form
         AddMonthlyMatrixSummaryRow("教室職員合計", month, daysInMonth,
             date => CountMeals(date, person =>
                 person.Type != PersonType.Student &&
-                person.Type != PersonType.Tasting),
+                person.Type != PersonType.Tasting &&
+                !IsStaffRoom(person.GetDeliveryPlace(date))),
             Color.FromArgb(238, 238, 248));
         AddMonthlyMatrixSummaryRow("給食合計", month, daysInMonth,
             date => CountServed(date, _data.People), Color.FromArgb(224, 239, 252));
