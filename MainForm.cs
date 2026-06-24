@@ -730,6 +730,9 @@ public sealed class MainForm : Form
             date => CountMeals(date, person =>
                 person.Type == PersonType.Tasting && person.HasMilk),
             Color.FromArgb(255, 245, 220));
+        AddMonthlyMatrixSummaryRow("総合計", month, daysInMonth,
+            date => CountServed(date, _data.People),
+            Color.FromArgb(205, 225, 245));
 
         _monthlyMatrixGrid.ResumeLayout();
     }
