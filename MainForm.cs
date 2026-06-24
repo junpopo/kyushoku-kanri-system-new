@@ -21,14 +21,16 @@ public sealed class MainForm : Form
     private readonly TableLayoutPanel _monthlyCalendar = new();
     private readonly DataGridView _summaryGrid = new();
     private readonly DateTimePicker _mealDatePicker = new();
+    private readonly Label _registeredFiscalYearLabel = new();
     private readonly Label _mealYearLabel = new();
     private readonly ComboBox _mealMonthCombo = new();
     private readonly Label _dailyTotalLabel = new();
     private readonly Label _monthlyTotalLabel = new();
     private readonly Label _monthlyDetailLabel = new();
     private DateTime _selectedMonthlyDate = DateTime.Today;
-    private int _selectedMealYear = DateTime.Today.Year;
-    private int _selectedMealMonth = DateTime.Today.Month;
+    private int _registeredFiscalYear;
+    private int _selectedMealYear;
+    private int _selectedMealMonth;
     private bool _updatingMealMonth;
 
     public MainForm(AppUser? currentUser = null)
@@ -36,6 +38,12 @@ public sealed class MainForm : Form
         _currentUser = currentUser;
         _isReadOnly = _currentUser?.Role != UserRole.Admin;
         _data = _repository.Load();
+        _registeredFiscalYear = _data.RegisteredFiscalYear > 0
+            ? _data.RegisteredFiscalYear
+            : CurrentFiscalYear();
+        _data.RegisteredFiscalYear = _registeredFiscalYear;
+        _selectedMealMonth = DateTime.Today.Month;
+        _selectedMealYear = YearForFiscalMonth(_registeredFiscalYear, _selectedMealMonth);
         NormalizePeople();
         NormalizeDeliveryPlaces();
         NormalizeDeliveryPlaceHistories();
@@ -160,6 +168,11 @@ public sealed class MainForm : Form
             AutoSize = true,
             WrapContents = false
         };
+        _registeredFiscalYearLabel.Text = $"登録年度: {_registeredFiscalYear}年度";
+        _registeredFiscalYearLabel.AutoSize = true;
+        _registeredFiscalYearLabel.Padding = new Padding(0, 8, 12, 0);
+        top.Controls.Add(_registeredFiscalYearLabel);
+        top.Controls.Add(CreateButton("年度登録", RegisterFiscalYear, requiresAdmin: true));
         top.Controls.Add(new Label { Text = "対象月", AutoSize = true, Padding = new Padding(0, 8, 6, 0) });
         _mealYearLabel.Text = $"{_selectedMealYear}年";
         _mealYearLabel.AutoSize = true;
@@ -603,18 +616,43 @@ public sealed class MainForm : Form
         }
 
         var newMonth = _mealMonthCombo.SelectedIndex + 1;
-        if (_selectedMealMonth == 12 && newMonth == 1)
-        {
-            _selectedMealYear++;
-        }
-        else if (_selectedMealMonth == 1 && newMonth == 12)
-        {
-            _selectedMealYear--;
-        }
-
         _selectedMealMonth = newMonth;
+        _selectedMealYear = YearForFiscalMonth(_registeredFiscalYear, newMonth);
         _mealYearLabel.Text = $"{_selectedMealYear}年";
         RefreshMonthly();
+    }
+
+    private void RegisterFiscalYear()
+    {
+        using var dialog = new FiscalYearRegistrationForm(_registeredFiscalYear);
+        if (dialog.ShowDialog(this) != DialogResult.OK)
+        {
+            return;
+        }
+
+        _registeredFiscalYear = dialog.FiscalYear;
+        _data.RegisteredFiscalYear = _registeredFiscalYear;
+        _repository.Save(_data);
+
+        _selectedMealMonth = 4;
+        _selectedMealYear = _registeredFiscalYear;
+        _registeredFiscalYearLabel.Text = $"登録年度: {_registeredFiscalYear}年度";
+        _mealYearLabel.Text = $"{_selectedMealYear}年";
+        _updatingMealMonth = true;
+        _mealMonthCombo.SelectedIndex = 3;
+        _updatingMealMonth = false;
+        RefreshMonthly();
+    }
+
+    private static int YearForFiscalMonth(int fiscalYear, int month)
+    {
+        return month >= 4 ? fiscalYear : fiscalYear + 1;
+    }
+
+    private static int CurrentFiscalYear()
+    {
+        var today = DateTime.Today;
+        return today.Month >= 4 ? today.Year : today.Year - 1;
     }
 
     private void RefreshMonthlyMatrix(DateTime month)
@@ -1353,7 +1391,8 @@ public sealed class MainForm : Form
         using var dialog = new DeliveryPlaceBasicCountForm(
             _data.DeliveryPlaceBasicCounts,
             _data.DeliveryPlaces,
-            _data.People);
+            _data.People,
+            _registeredFiscalYear);
         if (dialog.ShowDialog(this) != DialogResult.OK)
         {
             return;

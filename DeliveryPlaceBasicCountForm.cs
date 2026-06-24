@@ -18,11 +18,12 @@ public sealed class DeliveryPlaceBasicCountForm : Form
     public DeliveryPlaceBasicCountForm(
         IEnumerable<DeliveryPlaceBasicCount> basicCounts,
         IReadOnlyCollection<string> deliveryPlaces,
-        IReadOnlyCollection<Person> people)
+        IReadOnlyCollection<Person> people,
+        int initialFiscalYear)
     {
         _deliveryPlaces = deliveryPlaces;
         _people = people;
-        _loadedFiscalYear = CurrentFiscalYear();
+        _loadedFiscalYear = initialFiscalYear;
         _allCounts = basicCounts.Select(item =>
         {
             if (item.FiscalYear != 0)
@@ -468,9 +469,4 @@ public sealed class DeliveryPlaceBasicCountForm : Form
         return string.IsNullOrWhiteSpace(place) ? "未設定" : place.Trim();
     }
 
-    private static int CurrentFiscalYear()
-    {
-        var today = DateTime.Today;
-        return today.Month >= 4 ? today.Year : today.Year - 1;
-    }
 }

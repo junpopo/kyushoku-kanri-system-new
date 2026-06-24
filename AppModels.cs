@@ -141,6 +141,7 @@ public sealed class DeliveryPlaceBasicCount
 
 public sealed class AppData
 {
+    public int RegisteredFiscalYear { get; set; }
     public List<AppUser> Users { get; set; } = [];
     public List<Person> People { get; set; } = [];
     public List<MealRecord> MealRecords { get; set; } = [];
