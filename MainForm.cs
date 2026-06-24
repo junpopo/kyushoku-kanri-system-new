@@ -670,9 +670,11 @@ public sealed class MainForm : Form
                 !IsStaffRoom(person.GetDeliveryPlace(date))),
             Color.FromArgb(238, 238, 248));
         AddMonthlyMatrixSummaryRow("給食合計", month, daysInMonth,
-            date => CountServed(date, _data.People), Color.FromArgb(224, 239, 252));
+            date => CountMeals(date, person => person.Type != PersonType.Tasting),
+            Color.FromArgb(224, 239, 252));
         AddMonthlyMatrixSummaryRow("牛乳注文数", month, daysInMonth,
             date => _data.People.Count(person =>
+                person.Type != PersonType.Tasting &&
                 IsActive(person, date) &&
                 person.HasMilk &&
                 GetMealStatus(person, date) == MealStatus.Serve),
