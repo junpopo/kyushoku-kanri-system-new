@@ -81,7 +81,7 @@ public sealed class DeliveryPlaceBasicCountForm : Form
             Font = new Font(Font, FontStyle.Bold)
         });
         tools.Controls.Add(CreateButton("4月名簿から12か月作成", CreateForecastFromAprilRoster));
-        tools.Controls.Add(CreateButton("配膳場所を追加", AddMissingDeliveryPlaces));
+        tools.Controls.Add(CreateButton("名簿の組み合わせを追加", AddMissingDeliveryPlaces));
 
         ConfigureGrid();
 
@@ -214,9 +214,15 @@ public sealed class DeliveryPlaceBasicCountForm : Form
     private void LoadFiscalYear(int fiscalYear)
     {
         _loadedFiscalYear = fiscalYear;
+        var aprilDate = new DateTime(fiscalYear, 4, 1);
+        var combinations = RosterCombinations(aprilDate)
+            .Select(item => CombinationKey(item.DeliveryPlace, item.Category))
+            .ToHashSet(StringComparer.CurrentCultureIgnoreCase);
         _rows.Clear();
         foreach (var item in _allCounts
-            .Where(item => item.FiscalYear == fiscalYear)
+            .Where(item =>
+                item.FiscalYear == fiscalYear &&
+                combinations.Contains(CombinationKey(item.DeliveryPlace, item.Category)))
             .OrderBy(item => DeliveryPlaceSortKey(item.DeliveryPlace))
             .ThenBy(item => item.DeliveryPlace)
             .ThenBy(item => CategorySortKey(item.Category)))
@@ -241,29 +247,16 @@ public sealed class DeliveryPlaceBasicCountForm : Form
         _grid.EndEdit();
         var fiscalYear = _loadedFiscalYear;
         var aprilDate = new DateTime(fiscalYear, 4, 1);
-        var counts = _people
-            .Where(person =>
-                IsActive(person, aprilDate) &&
-                person.Type != PersonType.Tasting)
-            .GroupBy(person => new
-            {
-                Place = NormalizePlace(person.GetDeliveryPlace(aprilDate)),
-                Category = BasicCategory(person)
-            })
-            .ToDictionary(
-                group => $"{group.Key.Place}\u001f{group.Key.Category}",
-                group => group.Count(),
-                StringComparer.CurrentCultureIgnoreCase);
-        var places = KnownPlaces(aprilDate).ToList();
+        var combinations = RosterCombinations(aprilDate).ToList();
 
         _rows.Clear();
-        foreach (var place in places)
+        foreach (var combination in combinations)
         {
-            foreach (var category in CategoriesForPlace(place))
-            {
-                var aprilCount = counts.GetValueOrDefault($"{place}\u001f{category}");
-                _rows.Add(CreateForecastRow(fiscalYear, place, category, aprilCount));
-            }
+            _rows.Add(CreateForecastRow(
+                fiscalYear,
+                combination.DeliveryPlace,
+                combination.Category,
+                combination.Count));
         }
 
         SortRows();
@@ -274,51 +267,45 @@ public sealed class DeliveryPlaceBasicCountForm : Form
         _grid.EndEdit();
         var fiscalYear = _loadedFiscalYear;
         var aprilDate = new DateTime(fiscalYear, 4, 1);
-        var counts = _people
-            .Where(person =>
-                IsActive(person, aprilDate) &&
-                person.Type != PersonType.Tasting)
-            .GroupBy(person => new
-            {
-                Place = NormalizePlace(person.GetDeliveryPlace(aprilDate)),
-                Category = BasicCategory(person)
-            })
-            .ToDictionary(
-                group => $"{group.Key.Place}\u001f{group.Key.Category}",
-                group => group.Count(),
-                StringComparer.CurrentCultureIgnoreCase);
-
-        foreach (var place in KnownPlaces(aprilDate))
+        foreach (var combination in RosterCombinations(aprilDate))
         {
-            foreach (var category in CategoriesForPlace(place))
+            if (_rows.Any(item =>
+                CombinationKey(item.DeliveryPlace, item.Category)
+                    .Equals(
+                        CombinationKey(combination.DeliveryPlace, combination.Category),
+                        StringComparison.CurrentCultureIgnoreCase)))
             {
-                if (_rows.Any(item =>
-                    item.DeliveryPlace.Trim().Equals(place, StringComparison.CurrentCultureIgnoreCase) &&
-                    item.Category.Equals(category, StringComparison.CurrentCultureIgnoreCase)))
-                {
-                    continue;
-                }
-
-                _rows.Add(CreateForecastRow(
-                    fiscalYear,
-                    place,
-                    category,
-                    counts.GetValueOrDefault($"{place}\u001f{category}")));
+                continue;
             }
+
+            _rows.Add(CreateForecastRow(
+                fiscalYear,
+                combination.DeliveryPlace,
+                combination.Category,
+                combination.Count));
         }
 
         SortRows();
     }
 
-    private IEnumerable<string> KnownPlaces(DateTime aprilDate)
+    private IEnumerable<RosterCombination> RosterCombinations(DateTime aprilDate)
     {
-        return _deliveryPlaces
-            .Concat(_people.Select(person => person.GetDeliveryPlace(aprilDate)))
-            .Where(place => !string.IsNullOrWhiteSpace(place))
-            .Select(NormalizePlace)
-            .Distinct(StringComparer.CurrentCultureIgnoreCase)
-            .OrderBy(DeliveryPlaceSortKey)
-            .ThenBy(place => place);
+        return _people
+            .Where(person =>
+                IsActive(person, aprilDate) &&
+                person.Type != PersonType.Tasting)
+            .GroupBy(person => new
+            {
+                DeliveryPlace = NormalizePlace(person.GetDeliveryPlace(aprilDate)),
+                Category = BasicCategory(person)
+            })
+            .Select(group => new RosterCombination(
+                group.Key.DeliveryPlace,
+                group.Key.Category,
+                group.Count()))
+            .OrderBy(item => DeliveryPlaceSortKey(item.DeliveryPlace))
+            .ThenBy(item => item.DeliveryPlace)
+            .ThenBy(item => CategorySortKey(item.Category));
     }
 
     private bool StoreCurrentYear()
@@ -503,13 +490,6 @@ public sealed class DeliveryPlaceBasicCountForm : Form
         return person.Type == PersonType.Student ? "生徒" : "職員";
     }
 
-    private static IEnumerable<string> CategoriesForPlace(string deliveryPlace)
-    {
-        return IsStaffRoom(deliveryPlace)
-            ? new[] { "職員" }
-            : new[] { "生徒", "職員" };
-    }
-
     private static bool IsStaffRoomStudent(DeliveryPlaceBasicCount item)
     {
         return IsStaffRoom(item.DeliveryPlace) && item.Category == "生徒";
@@ -518,6 +498,11 @@ public sealed class DeliveryPlaceBasicCountForm : Form
     private static int CategorySortKey(string category)
     {
         return category == "生徒" ? 0 : 1;
+    }
+
+    private static string CombinationKey(string deliveryPlace, string category)
+    {
+        return $"{NormalizePlace(deliveryPlace)}\u001f{category.Trim()}";
     }
 
     private void SortRows()
@@ -560,5 +545,10 @@ public sealed class DeliveryPlaceBasicCountForm : Form
         return NormalizePlace(deliveryPlace)
             .Equals("職員室", StringComparison.CurrentCultureIgnoreCase);
     }
+
+    private sealed record RosterCombination(
+        string DeliveryPlace,
+        string Category,
+        int Count);
 
 }
