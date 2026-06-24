@@ -129,6 +129,12 @@ public sealed class MainForm : Form
         tabs.TabPages.Add(CreatePeoplePage());
         tabs.TabPages.Add(CreateMonthlyPage());
         tabs.TabPages.Add(CreateSummaryPage());
+        ConfigureColoredTabs(tabs,
+        [
+            Color.FromArgb(214, 235, 252),
+            Color.FromArgb(218, 242, 226),
+            Color.FromArgb(255, 235, 204)
+        ]);
         return tabs;
     }
 
@@ -190,6 +196,11 @@ public sealed class MainForm : Form
         matrixPage.Controls.Add(_monthlyMatrixGrid);
         views.TabPages.Add(calendarPage);
         views.TabPages.Add(matrixPage);
+        ConfigureColoredTabs(views,
+        [
+            Color.FromArgb(222, 241, 255),
+            Color.FromArgb(255, 232, 190)
+        ]);
 
         panel.Controls.Add(top, 0, 0);
         panel.Controls.Add(views, 0, 1);
@@ -339,6 +350,39 @@ public sealed class MainForm : Form
         };
         button.Click += (_, _) => action();
         return button;
+    }
+
+    private static void ConfigureColoredTabs(TabControl tabs, IReadOnlyList<Color> colors)
+    {
+        tabs.DrawMode = TabDrawMode.OwnerDrawFixed;
+        tabs.SizeMode = TabSizeMode.Fixed;
+        tabs.ItemSize = new Size(150, 30);
+        tabs.DrawItem += (_, eventArgs) =>
+        {
+            var page = tabs.TabPages[eventArgs.Index];
+            var baseColor = colors[eventArgs.Index % colors.Count];
+            var selected = eventArgs.Index == tabs.SelectedIndex;
+            var backColor = selected ? Darken(baseColor, 18) : baseColor;
+
+            using var background = new SolidBrush(backColor);
+            using var selectedFont = selected ? new Font(tabs.Font, FontStyle.Bold) : null;
+            eventArgs.Graphics.FillRectangle(background, eventArgs.Bounds);
+            TextRenderer.DrawText(
+                eventArgs.Graphics,
+                page.Text,
+                selectedFont ?? tabs.Font,
+                eventArgs.Bounds,
+                Color.FromArgb(35, 45, 55),
+                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+        };
+    }
+
+    private static Color Darken(Color color, int amount)
+    {
+        return Color.FromArgb(
+            Math.Max(0, color.R - amount),
+            Math.Max(0, color.G - amount),
+            Math.Max(0, color.B - amount));
     }
 
     private void ConfigurePeopleGrid()
