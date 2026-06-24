@@ -615,7 +615,7 @@ public sealed class MainForm : Form
         _monthlyMatrixGrid.Columns.Add(new DataGridViewTextBoxColumn
         {
             HeaderText = "月合計",
-            Width = 70,
+            Width = 50,
             SortMode = DataGridViewColumnSortMode.NotSortable
         });
 
