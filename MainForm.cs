@@ -610,8 +610,15 @@ public sealed class MainForm : Form
 
         _monthlyMatrixGrid.Columns.Add(new DataGridViewTextBoxColumn
         {
-            HeaderText = "学級・区分",
-            Width = 115,
+            HeaderText = "学級",
+            Width = 75,
+            Frozen = true,
+            SortMode = DataGridViewColumnSortMode.NotSortable
+        });
+        _monthlyMatrixGrid.Columns.Add(new DataGridViewTextBoxColumn
+        {
+            HeaderText = "区分",
+            Width = 75,
             Frozen = true,
             SortMode = DataGridViewColumnSortMode.NotSortable
         });
@@ -644,20 +651,29 @@ public sealed class MainForm : Form
 
         foreach (var group in groups)
         {
-            var values = new object[daysInMonth + 2];
-            values[0] = group.Key;
+            var values = new object[daysInMonth + 3];
+            var firstPerson = group.First();
+            values[0] = firstPerson.Type == PersonType.Student ? group.Key : "";
+            values[1] = firstPerson.Type == PersonType.Student ? "生徒" : firstPerson.TypeLabel;
             var monthTotal = 0;
             for (var day = 1; day <= daysInMonth; day++)
             {
                 var date = new DateTime(month.Year, month.Month, day);
                 var count = CountServed(date, group.ToList());
-                values[day] = count;
+                values[day + 1] = count;
                 monthTotal += count;
             }
 
             values[^1] = monthTotal;
             var rowIndex = _monthlyMatrixGrid.Rows.Add(values);
-            StyleMonthlyMatrixRow(_monthlyMatrixGrid.Rows[rowIndex], month, daysInMonth, false);
+            var matrixRow = _monthlyMatrixGrid.Rows[rowIndex];
+            if (firstPerson.Type != PersonType.Student)
+            {
+                matrixRow.DefaultCellStyle.BackColor = Color.FromArgb(232, 241, 250);
+                matrixRow.DefaultCellStyle.Font = new Font(_monthlyMatrixGrid.Font, FontStyle.Bold);
+            }
+
+            StyleMonthlyMatrixRow(matrixRow, month, daysInMonth, false);
         }
 
         AddMonthlyMatrixSummaryRow("給食合計", month, daysInMonth,
@@ -685,13 +701,14 @@ public sealed class MainForm : Form
         Func<DateTime, int> countForDate,
         Color backColor)
     {
-        var values = new object[daysInMonth + 2];
-        values[0] = label;
+        var values = new object[daysInMonth + 3];
+        values[0] = "";
+        values[1] = label;
         var total = 0;
         for (var day = 1; day <= daysInMonth; day++)
         {
             var count = countForDate(new DateTime(month.Year, month.Month, day));
-            values[day] = count;
+            values[day + 1] = count;
             total += count;
         }
 
@@ -708,18 +725,20 @@ public sealed class MainForm : Form
         int daysInMonth,
         bool isSummary)
     {
-        row.Cells[0].Style.Alignment = DataGridViewContentAlignment.MiddleLeft;
+        row.Cells[0].Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
+        row.Cells[1].Style.Alignment = DataGridViewContentAlignment.MiddleLeft;
         for (var day = 1; day <= daysInMonth; day++)
         {
             var date = new DateTime(month.Year, month.Month, day);
+            var cellIndex = day + 1;
             if (date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
             {
-                row.Cells[day].Style.BackColor = Color.FromArgb(255, 205, 45);
-                row.Cells[day].Style.ForeColor = Color.FromArgb(80, 60, 0);
+                row.Cells[cellIndex].Style.BackColor = Color.FromArgb(255, 205, 45);
+                row.Cells[cellIndex].Style.ForeColor = Color.FromArgb(80, 60, 0);
             }
-            else if (!isSummary && Convert.ToInt32(row.Cells[day].Value) == 0)
+            else if (!isSummary && Convert.ToInt32(row.Cells[cellIndex].Value) == 0)
             {
-                row.Cells[day].Style.ForeColor = Color.Gray;
+                row.Cells[cellIndex].Style.ForeColor = Color.Gray;
             }
         }
     }
