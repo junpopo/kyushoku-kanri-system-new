@@ -5,7 +5,8 @@ public sealed class ServedPeopleDetailsForm : Form
     public ServedPeopleDetailsForm(
         DateTime date,
         string deliveryPlace,
-        IReadOnlyCollection<Person> people)
+        IReadOnlyCollection<Person> people,
+        IReadOnlyCollection<MealRecord> mealRecords)
     {
         Text = "喫食者の詳細";
         Width = 720;
@@ -34,6 +35,7 @@ public sealed class ServedPeopleDetailsForm : Form
 
         var rows = people.Select(person => new ServedPersonRow
         {
+            Person = person,
             Type = person.TypeLabel,
             Name = person.FullName,
             DeliveryPlace = person.GetDeliveryPlace(date),
@@ -53,12 +55,28 @@ public sealed class ServedPeopleDetailsForm : Form
             AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
             DataSource = rows
         };
+        grid.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+        grid.MultiSelect = false;
         grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "区分", DataPropertyName = nameof(ServedPersonRow.Type), FillWeight = 70 });
         grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "氏名", DataPropertyName = nameof(ServedPersonRow.Name), FillWeight = 120 });
         grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "配膳場所", DataPropertyName = nameof(ServedPersonRow.DeliveryPlace), FillWeight = 95 });
         grid.Columns.Add(new DataGridViewCheckBoxColumn { HeaderText = "牛乳", DataPropertyName = nameof(ServedPersonRow.HasMilk), FillWeight = 45 });
         grid.Columns.Add(new DataGridViewCheckBoxColumn { HeaderText = "アレルギー対応", DataPropertyName = nameof(ServedPersonRow.HasAllergySupport), FillWeight = 80 });
         grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "備考", DataPropertyName = nameof(ServedPersonRow.Memo), FillWeight = 160 });
+        grid.CellDoubleClick += (_, eventArgs) =>
+        {
+            if (eventArgs.RowIndex < 0 ||
+                grid.Rows[eventArgs.RowIndex].DataBoundItem is not ServedPersonRow selected)
+            {
+                return;
+            }
+
+            using var dialog = new PersonMonthlyMealMatrixForm(
+                new DateTime(date.Year, date.Month, 1),
+                selected.Person,
+                mealRecords);
+            dialog.ShowDialog(this);
+        };
 
         var closePanel = new FlowLayoutPanel
         {
@@ -86,6 +104,7 @@ public sealed class ServedPeopleDetailsForm : Form
 
     private sealed class ServedPersonRow
     {
+        public required Person Person { get; init; }
         public string Type { get; init; } = "";
         public string Name { get; init; } = "";
         public string DeliveryPlace { get; init; } = "";

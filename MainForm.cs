@@ -785,7 +785,8 @@ public sealed class MainForm : Form
         using var dialog = new ServedPeopleDetailsForm(
             date,
             $"{deliveryPlace} / {typeLabel}",
-            people);
+            people,
+            _data.MealRecords);
         dialog.ShowDialog(this);
     }
 
@@ -802,7 +803,11 @@ public sealed class MainForm : Form
             .ThenBy(person => person.FirstName)
             .ToList();
 
-        using var dialog = new ServedPeopleDetailsForm(date, "アレルギー対応", people);
+        using var dialog = new ServedPeopleDetailsForm(
+            date,
+            "アレルギー対応",
+            people,
+            _data.MealRecords);
         dialog.ShowDialog(this);
     }
 
