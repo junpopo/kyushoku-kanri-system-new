@@ -9,7 +9,7 @@ internal static class Program
 
         var repository = new AppRepository();
         var data = repository.Load();
-        EnsureDefaultAdmin(data, repository);
+        EnsureDefaultUsers(data, repository);
 
         using var loginForm = new LoginForm(data.Users);
         if (loginForm.ShowDialog() != DialogResult.OK)
@@ -20,21 +20,38 @@ internal static class Program
         Application.Run(new MainForm(loginForm.LoggedInUser));
     }
 
-    private static void EnsureDefaultAdmin(AppData data, AppRepository repository)
+    private static void EnsureDefaultUsers(AppData data, AppRepository repository)
     {
-        if (data.Users.Count > 0)
+        var changed = false;
+        if (!data.Users.Any(user => user.Role == UserRole.Admin))
         {
-            return;
+            data.Users.Add(new AppUser
+            {
+                LoginId = "admin",
+                DisplayName = "管理者",
+                PasswordHash = PasswordHasher.Hash("admin"),
+                Role = UserRole.Admin,
+                IsActive = true
+            });
+            changed = true;
         }
 
-        data.Users.Add(new AppUser
+        if (!data.Users.Any(user => user.Role == UserRole.User))
         {
-            LoginId = "admin",
-            DisplayName = "管理者",
-            PasswordHash = PasswordHasher.Hash("admin"),
-            Role = UserRole.Admin,
-            IsActive = true
-        });
-        repository.Save(data);
+            data.Users.Add(new AppUser
+            {
+                LoginId = "viewer",
+                DisplayName = "閲覧利用者",
+                PasswordHash = PasswordHasher.Hash("viewer"),
+                Role = UserRole.User,
+                IsActive = true
+            });
+            changed = true;
+        }
+
+        if (changed)
+        {
+            repository.Save(data);
+        }
     }
 }

@@ -5,6 +5,7 @@ public sealed class LoginForm : Form
     private readonly IReadOnlyCollection<AppUser> _users;
     private readonly TextBox _loginId = new();
     private readonly TextBox _password = new();
+    private readonly ComboBox _loginType = new();
     private readonly Label _message = new();
 
     public AppUser? LoggedInUser { get; private set; }
@@ -14,7 +15,7 @@ public sealed class LoginForm : Form
         _users = users;
         Text = "ログイン";
         Width = 420;
-        Height = 260;
+        Height = 300;
         StartPosition = FormStartPosition.CenterScreen;
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
@@ -50,7 +51,7 @@ public sealed class LoginForm : Form
             Dock = DockStyle.Top,
             AutoSize = true,
             ColumnCount = 2,
-            RowCount = 3
+            RowCount = 4
         };
         fields.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 95));
         fields.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -58,12 +59,17 @@ public sealed class LoginForm : Form
         _loginId.Dock = DockStyle.Fill;
         _password.Dock = DockStyle.Fill;
         _password.UseSystemPasswordChar = true;
+        _loginType.Dock = DockStyle.Fill;
+        _loginType.DropDownStyle = ComboBoxStyle.DropDownList;
+        _loginType.Items.AddRange(["管理者", "一般利用者（閲覧のみ）"]);
+        _loginType.SelectedIndex = 0;
         _message.ForeColor = Color.Firebrick;
         _message.AutoSize = true;
 
-        AddRow(fields, 0, "ログインID", _loginId);
-        AddRow(fields, 1, "パスワード", _password);
-        fields.Controls.Add(_message, 1, 2);
+        AddRow(fields, 0, "ログイン区分", _loginType);
+        AddRow(fields, 1, "ログインID", _loginId);
+        AddRow(fields, 2, "パスワード", _password);
+        fields.Controls.Add(_message, 1, 3);
 
         var buttons = new FlowLayoutPanel
         {
@@ -106,6 +112,15 @@ public sealed class LoginForm : Form
             _message.Text = "ログインIDまたはパスワードが違います。";
             _password.Clear();
             _password.Focus();
+            return;
+        }
+
+        var expectedRole = _loginType.SelectedIndex == 0 ? UserRole.Admin : UserRole.User;
+        if (user.Role != expectedRole)
+        {
+            _message.Text = expectedRole == UserRole.Admin
+                ? "この利用者は管理者ではありません。"
+                : "管理者アカウントは「管理者」を選択してください。";
             return;
         }
 

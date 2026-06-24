@@ -11,6 +11,7 @@ public sealed class MainForm : Form
     private readonly BindingList<MonthlyMealRow> _monthlyRows = [];
     private readonly BindingList<SummaryRow> _summaryRows = [];
     private readonly AppUser? _currentUser;
+    private readonly bool _isReadOnly;
 
     private readonly DataGridView _peopleGrid = new();
     private readonly DataGridView _dailyGrid = new();
@@ -24,13 +25,14 @@ public sealed class MainForm : Form
     public MainForm(AppUser? currentUser = null)
     {
         _currentUser = currentUser;
+        _isReadOnly = _currentUser?.Role != UserRole.Admin;
         _data = _repository.Load();
         NormalizePeople();
         NormalizeDeliveryPlaces();
         NormalizeDeliveryPlaceHistories();
         Text = _currentUser is null
             ? "給食管理システム"
-            : $"給食管理システム - {_currentUser.DisplayName}";
+            : $"給食管理システム - {_currentUser.DisplayName}{(_isReadOnly ? "（閲覧のみ）" : "（管理者）")}";
         Width = 1120;
         Height = 760;
         MinimumSize = new Size(980, 640);
@@ -184,11 +186,11 @@ public sealed class MainForm : Form
             AutoSize = true,
             WrapContents = false
         };
-        buttons.Controls.Add(CreateButton("CSV名簿を読み込み", ImportRoster));
-        buttons.Controls.Add(CreateButton("1人追加", AddPerson));
-        buttons.Controls.Add(CreateButton("選択を編集", EditSelectedPerson));
-        buttons.Controls.Add(CreateButton("選択を削除", DeleteSelectedPerson));
-        buttons.Controls.Add(CreateButton("配膳場所管理", ManageDeliveryPlaces));
+        buttons.Controls.Add(CreateButton("CSV名簿を読み込み", ImportRoster, requiresAdmin: true));
+        buttons.Controls.Add(CreateButton("1人追加", AddPerson, requiresAdmin: true));
+        buttons.Controls.Add(CreateButton("選択を編集", EditSelectedPerson, requiresAdmin: true));
+        buttons.Controls.Add(CreateButton("選択を削除", DeleteSelectedPerson, requiresAdmin: true));
+        buttons.Controls.Add(CreateButton("配膳場所管理", ManageDeliveryPlaces, requiresAdmin: true));
 
         ConfigurePeopleGrid();
         panel.Controls.Add(buttons, 0, 0);
@@ -221,8 +223,8 @@ public sealed class MainForm : Form
         _mealDatePicker.ValueChanged += (_, _) => RefreshDaily();
         top.Controls.Add(new Label { Text = "日付", AutoSize = true, Padding = new Padding(0, 8, 6, 0) });
         top.Controls.Add(_mealDatePicker);
-        top.Controls.Add(CreateButton("全員提供", MarkAllServed));
-        top.Controls.Add(CreateButton("保存", SaveDaily));
+        top.Controls.Add(CreateButton("全員提供", MarkAllServed, requiresAdmin: true));
+        top.Controls.Add(CreateButton("保存", SaveDaily, requiresAdmin: true));
 
         ConfigureDailyGrid();
         _dailyTotalLabel.AutoSize = true;
@@ -293,11 +295,12 @@ public sealed class MainForm : Form
         return page;
     }
 
-    private Button CreateButton(string text, Action action)
+    private Button CreateButton(string text, Action action, bool requiresAdmin = false)
     {
         var button = new Button
         {
             Text = text,
+            Enabled = !requiresAdmin || !_isReadOnly,
             AutoSize = true,
             Margin = new Padding(0, 0, 8, 8),
             Padding = new Padding(10, 5, 10, 5)
@@ -344,6 +347,7 @@ public sealed class MainForm : Form
     private void ConfigureDailyGrid()
     {
         _dailyGrid.Dock = DockStyle.Fill;
+        _dailyGrid.ReadOnly = _isReadOnly;
         _dailyGrid.AllowUserToAddRows = false;
         _dailyGrid.AllowUserToDeleteRows = false;
         _dailyGrid.AutoGenerateColumns = false;
