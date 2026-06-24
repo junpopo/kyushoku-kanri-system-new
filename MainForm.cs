@@ -17,6 +17,7 @@ public sealed class MainForm : Form
     private readonly DataGridView _peopleGrid = new();
     private readonly DataGridView _dailyGrid = new();
     private readonly DataGridView _monthlyGrid = new();
+    private readonly DataGridView _monthlyMatrixGrid = new();
     private readonly TableLayoutPanel _monthlyCalendar = new();
     private readonly DataGridView _summaryGrid = new();
     private readonly DateTimePicker _mealDatePicker = new();
@@ -138,13 +139,11 @@ public sealed class MainForm : Form
         {
             Dock = DockStyle.Fill,
             ColumnCount = 1,
-            RowCount = 5,
+            RowCount = 3,
             Padding = new Padding(12)
         };
         panel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        panel.RowStyles.Add(new RowStyle(SizeType.Percent, 62));
-        panel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        panel.RowStyles.Add(new RowStyle(SizeType.Percent, 38));
+        panel.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         panel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
         var top = new FlowLayoutPanel
@@ -169,11 +168,32 @@ public sealed class MainForm : Form
         _monthlyTotalLabel.AutoSize = true;
         _monthlyTotalLabel.Padding = new Padding(4, 8, 0, 0);
 
+        var calendarLayout = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 3,
+            Padding = new Padding(4)
+        };
+        calendarLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 62));
+        calendarLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        calendarLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 38));
+        calendarLayout.Controls.Add(_monthlyCalendar, 0, 0);
+        calendarLayout.Controls.Add(_monthlyDetailLabel, 0, 1);
+        calendarLayout.Controls.Add(_monthlyGrid, 0, 2);
+
+        ConfigureMonthlyMatrixGrid();
+        var views = new TabControl { Dock = DockStyle.Fill };
+        var calendarPage = new TabPage("カレンダー");
+        calendarPage.Controls.Add(calendarLayout);
+        var matrixPage = new TabPage("月間一覧");
+        matrixPage.Controls.Add(_monthlyMatrixGrid);
+        views.TabPages.Add(calendarPage);
+        views.TabPages.Add(matrixPage);
+
         panel.Controls.Add(top, 0, 0);
-        panel.Controls.Add(_monthlyCalendar, 0, 1);
-        panel.Controls.Add(_monthlyDetailLabel, 0, 2);
-        panel.Controls.Add(_monthlyGrid, 0, 3);
-        panel.Controls.Add(_monthlyTotalLabel, 0, 4);
+        panel.Controls.Add(views, 0, 1);
+        panel.Controls.Add(_monthlyTotalLabel, 0, 2);
         page.Controls.Add(panel);
         return page;
     }
@@ -429,6 +449,24 @@ public sealed class MainForm : Form
         };
     }
 
+    private void ConfigureMonthlyMatrixGrid()
+    {
+        _monthlyMatrixGrid.Dock = DockStyle.Fill;
+        _monthlyMatrixGrid.ReadOnly = true;
+        _monthlyMatrixGrid.AllowUserToAddRows = false;
+        _monthlyMatrixGrid.AllowUserToDeleteRows = false;
+        _monthlyMatrixGrid.AllowUserToResizeRows = false;
+        _monthlyMatrixGrid.RowHeadersVisible = false;
+        _monthlyMatrixGrid.AutoGenerateColumns = false;
+        _monthlyMatrixGrid.SelectionMode = DataGridViewSelectionMode.CellSelect;
+        _monthlyMatrixGrid.BackgroundColor = Color.White;
+        _monthlyMatrixGrid.BorderStyle = BorderStyle.FixedSingle;
+        _monthlyMatrixGrid.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+        _monthlyMatrixGrid.ColumnHeadersDefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+        _monthlyMatrixGrid.ColumnHeadersHeight = 42;
+        _monthlyMatrixGrid.RowTemplate.Height = 24;
+    }
+
     private void RefreshPeople()
     {
         _personRows.Clear();
@@ -512,11 +550,147 @@ public sealed class MainForm : Form
 
         BuildMonthlyCalendar(month);
         ShowMonthlyDetails(_selectedMonthlyDate);
+        RefreshMonthlyMatrix(month);
 
         var served = _monthlyAllRows.Sum(row => row.Served);
         var milk = _monthlyAllRows.Sum(row => row.Milk);
         var allergy = _monthlyAllRows.Sum(row => row.AllergySupport);
         _monthlyTotalLabel.Text = $"月合計  提供: {served} / 牛乳: {milk} / アレルギー対応: {allergy}";
+    }
+
+    private void RefreshMonthlyMatrix(DateTime month)
+    {
+        _monthlyMatrixGrid.SuspendLayout();
+        _monthlyMatrixGrid.Columns.Clear();
+        _monthlyMatrixGrid.Rows.Clear();
+
+        _monthlyMatrixGrid.Columns.Add(new DataGridViewTextBoxColumn
+        {
+            HeaderText = "学級・区分",
+            Width = 115,
+            Frozen = true,
+            SortMode = DataGridViewColumnSortMode.NotSortable
+        });
+
+        var daysInMonth = DateTime.DaysInMonth(month.Year, month.Month);
+        for (var day = 1; day <= daysInMonth; day++)
+        {
+            var date = new DateTime(month.Year, month.Month, day);
+            _monthlyMatrixGrid.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                HeaderText = $"{day}\n{JapaneseDayOfWeek(date.DayOfWeek)}",
+                Width = 36,
+                SortMode = DataGridViewColumnSortMode.NotSortable,
+                Tag = date
+            });
+        }
+
+        _monthlyMatrixGrid.Columns.Add(new DataGridViewTextBoxColumn
+        {
+            HeaderText = "月合計",
+            Width = 70,
+            SortMode = DataGridViewColumnSortMode.NotSortable
+        });
+
+        var groups = _data.People
+            .GroupBy(person => person.GroupLabel)
+            .OrderBy(group => GroupSortKey(group.First()))
+            .ThenBy(group => group.Key)
+            .ToList();
+
+        foreach (var group in groups)
+        {
+            var values = new object[daysInMonth + 2];
+            values[0] = group.Key;
+            var monthTotal = 0;
+            for (var day = 1; day <= daysInMonth; day++)
+            {
+                var date = new DateTime(month.Year, month.Month, day);
+                var count = CountServed(date, group.ToList());
+                values[day] = count;
+                monthTotal += count;
+            }
+
+            values[^1] = monthTotal;
+            var rowIndex = _monthlyMatrixGrid.Rows.Add(values);
+            StyleMonthlyMatrixRow(_monthlyMatrixGrid.Rows[rowIndex], month, daysInMonth, false);
+        }
+
+        AddMonthlyMatrixSummaryRow("給食合計", month, daysInMonth,
+            date => CountServed(date, _data.People), Color.FromArgb(224, 239, 252));
+        AddMonthlyMatrixSummaryRow("牛乳注文数", month, daysInMonth,
+            date => _data.People.Count(person =>
+                IsActive(person, date) &&
+                person.HasMilk &&
+                GetMealStatus(person, date) == MealStatus.Serve),
+            Color.FromArgb(226, 243, 235));
+        AddMonthlyMatrixSummaryRow("アレルギー対応", month, daysInMonth,
+            date => _data.People.Count(person =>
+                IsActive(person, date) &&
+                person.HasAllergySupport &&
+                GetMealStatus(person, date) == MealStatus.Serve),
+            Color.FromArgb(255, 239, 220));
+
+        _monthlyMatrixGrid.ResumeLayout();
+    }
+
+    private void AddMonthlyMatrixSummaryRow(
+        string label,
+        DateTime month,
+        int daysInMonth,
+        Func<DateTime, int> countForDate,
+        Color backColor)
+    {
+        var values = new object[daysInMonth + 2];
+        values[0] = label;
+        var total = 0;
+        for (var day = 1; day <= daysInMonth; day++)
+        {
+            var count = countForDate(new DateTime(month.Year, month.Month, day));
+            values[day] = count;
+            total += count;
+        }
+
+        values[^1] = total;
+        var row = _monthlyMatrixGrid.Rows[_monthlyMatrixGrid.Rows.Add(values)];
+        row.DefaultCellStyle.BackColor = backColor;
+        row.DefaultCellStyle.Font = new Font(_monthlyMatrixGrid.Font, FontStyle.Bold);
+        StyleMonthlyMatrixRow(row, month, daysInMonth, true);
+    }
+
+    private static void StyleMonthlyMatrixRow(
+        DataGridViewRow row,
+        DateTime month,
+        int daysInMonth,
+        bool isSummary)
+    {
+        row.Cells[0].Style.Alignment = DataGridViewContentAlignment.MiddleLeft;
+        for (var day = 1; day <= daysInMonth; day++)
+        {
+            var date = new DateTime(month.Year, month.Month, day);
+            if (date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
+            {
+                row.Cells[day].Style.BackColor = Color.FromArgb(255, 205, 45);
+                row.Cells[day].Style.ForeColor = Color.FromArgb(80, 60, 0);
+            }
+            else if (!isSummary && Convert.ToInt32(row.Cells[day].Value) == 0)
+            {
+                row.Cells[day].Style.ForeColor = Color.Gray;
+            }
+        }
+    }
+
+    private static bool IsActive(Person person, DateTime date)
+    {
+        return person.ActiveFrom.Date <= date.Date &&
+               (person.ActiveTo is null || person.ActiveTo.Value.Date >= date.Date);
+    }
+
+    private static int GroupSortKey(Person person)
+    {
+        return person.Type == PersonType.Student
+            ? ToNumber(person.Grade) * 100 + ToNumber(person.ClassName)
+            : 10000 + (int)person.Type;
     }
 
     private void BuildMonthlyCalendar(DateTime month)
