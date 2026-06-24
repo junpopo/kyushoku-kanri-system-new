@@ -14,8 +14,8 @@ public sealed class LoginForm : Form
     {
         _users = users;
         Text = "ログイン";
-        Width = 420;
-        Height = 300;
+        Width = 380;
+        Height = 245;
         StartPosition = FormStartPosition.CenterScreen;
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
@@ -31,7 +31,7 @@ public sealed class LoginForm : Form
             Dock = DockStyle.Fill,
             ColumnCount = 1,
             RowCount = 3,
-            Padding = new Padding(24)
+            Padding = new Padding(16)
         };
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
@@ -41,9 +41,9 @@ public sealed class LoginForm : Form
         {
             Text = "給食管理システム",
             Dock = DockStyle.Fill,
-            Font = new Font(Font.FontFamily, 15, FontStyle.Bold),
+            Font = new Font(Font.FontFamily, 13, FontStyle.Bold),
             AutoSize = true,
-            Margin = new Padding(0, 0, 0, 18)
+            Margin = new Padding(0, 0, 0, 10)
         };
 
         var fields = new TableLayoutPanel
@@ -53,7 +53,7 @@ public sealed class LoginForm : Form
             ColumnCount = 2,
             RowCount = 4
         };
-        fields.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 95));
+        fields.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 85));
         fields.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
         _loginId.Dock = DockStyle.Fill;
@@ -79,8 +79,8 @@ public sealed class LoginForm : Form
             Dock = DockStyle.Fill,
             AutoSize = true
         };
-        var login = new Button { Text = "ログイン", AutoSize = true, Padding = new Padding(16, 6, 16, 6) };
-        var cancel = new Button { Text = "終了", DialogResult = DialogResult.Cancel, AutoSize = true, Padding = new Padding(16, 6, 16, 6) };
+        var login = new Button { Text = "ログイン", AutoSize = true, Padding = new Padding(12, 4, 12, 4) };
+        var cancel = new Button { Text = "終了", DialogResult = DialogResult.Cancel, AutoSize = true, Padding = new Padding(12, 4, 12, 4) };
         login.Click += (_, _) => TryLogin();
         buttons.Controls.Add(login);
         buttons.Controls.Add(cancel);
@@ -97,8 +97,8 @@ public sealed class LoginForm : Form
     private static void AddRow(TableLayoutPanel panel, int row, string labelText, Control input)
     {
         panel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        panel.Controls.Add(new Label { Text = labelText, AutoSize = true, Padding = new Padding(0, 8, 0, 0) }, 0, row);
-        input.Margin = new Padding(0, 2, 0, 8);
+        panel.Controls.Add(new Label { Text = labelText, AutoSize = true, Padding = new Padding(0, 6, 0, 0) }, 0, row);
+        input.Margin = new Padding(0, 1, 0, 5);
         panel.Controls.Add(input, 1, row);
     }
 
@@ -163,5 +163,6 @@ public sealed class LoginForm : Form
         }
 
         _message.Text = showCredentials ? "" : "一般利用者は閲覧のみです。";
+        Height = showCredentials ? 245 : 190;
     }
 }
