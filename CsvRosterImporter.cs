@@ -36,7 +36,7 @@ public static class CsvRosterImporter
             var (lastName, firstName) = SplitName(fullName);
             people.Add(new Person
             {
-                Type = PersonType.Student,
+                Type = ParsePersonType(Get(row, header, "区分", "分類", "type").Trim()),
                 Grade = Get(row, header, "学年", "grade").Trim(),
                 ClassName = Get(row, header, "組", "クラス", "class", "classname").Trim(),
                 StudentNumber = Get(row, header, "番号", "出席番号", "number", "studentnumber").Trim(),
@@ -55,6 +55,19 @@ public static class CsvRosterImporter
         }
 
         return people;
+    }
+
+    private static PersonType ParsePersonType(string value)
+    {
+        return NormalizeHeader(value) switch
+        {
+            "職員" or "staff" => PersonType.Staff,
+            "alt" => PersonType.Alt,
+            "教育実習生" or "実習生" or "trainee" => PersonType.Trainee,
+            "試食会" or "tasting" => PersonType.Tasting,
+            "ゲスト" or "guest" => PersonType.Guest,
+            _ => PersonType.Student
+        };
     }
 
     private static (string LastName, string FirstName) SplitName(string fullName)
