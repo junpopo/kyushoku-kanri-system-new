@@ -230,6 +230,8 @@ public sealed class DeliveryPlaceBasicCountForm : Form
         {
             AddMissingDeliveryPlaces();
         }
+
+        SortRows();
     }
 
     private void CreateForecastFromAprilRoster()
@@ -261,6 +263,8 @@ public sealed class DeliveryPlaceBasicCountForm : Form
                 _rows.Add(CreateForecastRow(fiscalYear, place, category, aprilCount));
             }
         }
+
+        SortRows();
     }
 
     private void AddMissingDeliveryPlaces()
@@ -300,6 +304,8 @@ public sealed class DeliveryPlaceBasicCountForm : Form
                     counts.GetValueOrDefault($"{place}\u001f{category}")));
             }
         }
+
+        SortRows();
     }
 
     private IEnumerable<string> KnownPlaces(DateTime aprilDate)
@@ -498,6 +504,25 @@ public sealed class DeliveryPlaceBasicCountForm : Form
     private static int CategorySortKey(string category)
     {
         return category == "生徒" ? 0 : 1;
+    }
+
+    private void SortRows()
+    {
+        var sorted = _rows
+            .OrderBy(item => DeliveryPlaceSortKey(item.DeliveryPlace))
+            .ThenBy(item => item.DeliveryPlace)
+            .ThenBy(item => CategorySortKey(item.Category))
+            .ToList();
+
+        _rows.RaiseListChangedEvents = false;
+        _rows.Clear();
+        foreach (var item in sorted)
+        {
+            _rows.Add(item);
+        }
+
+        _rows.RaiseListChangedEvents = true;
+        _rows.ResetBindings();
     }
 
     private static int DeliveryPlaceSortKey(string deliveryPlace)
