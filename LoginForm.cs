@@ -4,7 +4,6 @@ public sealed class LoginForm : Form
 {
     private readonly IReadOnlyCollection<AppUser> _users;
     private readonly TextBox _loginId = new();
-    private readonly TextBox _password = new();
     private readonly ComboBox _loginType = new();
     private readonly Label _message = new();
 
@@ -59,10 +58,6 @@ public sealed class LoginForm : Form
         _loginId.Width = 120;
         _loginId.Anchor = AnchorStyles.Left;
         _loginId.MaxLength = 30;
-        _password.Width = 120;
-        _password.Anchor = AnchorStyles.Left;
-        _password.MaxLength = 30;
-        _password.UseSystemPasswordChar = true;
         _loginType.Dock = DockStyle.Fill;
         _loginType.DropDownStyle = ComboBoxStyle.DropDownList;
         _loginType.Items.AddRange(["管理者", "一般利用者（閲覧のみ）"]);
@@ -72,7 +67,7 @@ public sealed class LoginForm : Form
 
         AddRow(fields, 0, "ログイン区分", _loginType);
         AddRow(fields, 1, "ログインID", _loginId);
-        AddRow(fields, 2, "パスワード", _password);
+        fields.RowStyles.Add(new RowStyle(SizeType.Absolute, 0));
         fields.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         _message.Dock = DockStyle.Fill;
         _message.TextAlign = ContentAlignment.MiddleLeft;
@@ -138,11 +133,11 @@ public sealed class LoginForm : Form
             user.IsActive &&
             user.LoginId.Equals(loginId, StringComparison.OrdinalIgnoreCase));
 
-        if (user is null || !PasswordHasher.Verify(_password.Text, user.PasswordHash))
+        if (user is null)
         {
-            _message.Text = "ログインIDまたはパスワードが違います。";
-            _password.Clear();
-            _password.Focus();
+            _message.Text = "ログインIDが違います。";
+            _loginId.SelectAll();
+            _loginId.Focus();
             return;
         }
 
@@ -163,7 +158,7 @@ public sealed class LoginForm : Form
     private void UpdateCredentialFields(TableLayoutPanel fields, TableLayoutPanel root)
     {
         var showCredentials = _loginType.SelectedIndex == 0;
-        for (var row = 1; row <= 2; row++)
+        for (var row = 1; row <= 1; row++)
         {
             fields.RowStyles[row].SizeType = showCredentials ? SizeType.AutoSize : SizeType.Absolute;
             fields.RowStyles[row].Height = 0;
@@ -180,6 +175,6 @@ public sealed class LoginForm : Form
         _message.Text = showCredentials ? "" : "一般利用者は閲覧のみです。";
         fields.PerformLayout();
         root.PerformLayout();
-        ClientSize = new Size(364, showCredentials ? 225 : 170);
+        ClientSize = new Size(364, showCredentials ? 190 : 170);
     }
 }
