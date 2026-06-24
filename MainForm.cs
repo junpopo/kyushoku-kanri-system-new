@@ -260,7 +260,31 @@ public sealed class MainForm : Form
         _summaryGrid.ReadOnly = true;
         _summaryGrid.AllowUserToAddRows = false;
         _summaryGrid.AllowUserToDeleteRows = false;
-        _summaryGrid.AutoGenerateColumns = true;
+        _summaryGrid.AutoGenerateColumns = false;
+        _summaryGrid.RowHeadersVisible = false;
+        _summaryGrid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+        _summaryGrid.Columns.Clear();
+        _summaryGrid.Columns.Add(new DataGridViewTextBoxColumn
+        {
+            HeaderText = "グループ",
+            DataPropertyName = nameof(SummaryRow.Group),
+            FillWeight = 160
+        });
+        _summaryGrid.Columns.Add(new DataGridViewTextBoxColumn
+        {
+            HeaderText = "登録人数",
+            DataPropertyName = nameof(SummaryRow.Registered)
+        });
+        _summaryGrid.Columns.Add(new DataGridViewTextBoxColumn
+        {
+            HeaderText = "本日の在籍人数",
+            DataPropertyName = nameof(SummaryRow.ActiveToday)
+        });
+        _summaryGrid.Columns.Add(new DataGridViewTextBoxColumn
+        {
+            HeaderText = "本日の給食数",
+            DataPropertyName = nameof(SummaryRow.ServedToday)
+        });
         _summaryGrid.DataSource = _summaryRows;
 
         panel.Controls.Add(buttons, 0, 0);
