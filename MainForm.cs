@@ -35,7 +35,6 @@ public sealed class MainForm : Form
         Height = 760;
         MinimumSize = new Size(980, 640);
         StartPosition = FormStartPosition.CenterScreen;
-        WindowState = FormWindowState.Maximized;
 
         Controls.Add(CreateLayout());
         RefreshPeople();
@@ -292,20 +291,29 @@ public sealed class MainForm : Form
         _peopleGrid.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
         _peopleGrid.MultiSelect = false;
         _peopleGrid.AutoGenerateColumns = false;
+        _peopleGrid.RowHeadersVisible = false;
+        _peopleGrid.ScrollBars = ScrollBars.Vertical;
         _peopleGrid.Columns.Clear();
-        _peopleGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "区分", DataPropertyName = nameof(PersonRow.Type), ReadOnly = true });
-        _peopleGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "学年", DataPropertyName = nameof(PersonRow.Grade), ReadOnly = true });
-        _peopleGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "組", DataPropertyName = nameof(PersonRow.ClassName), ReadOnly = true });
-        _peopleGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "番号", DataPropertyName = nameof(PersonRow.StudentNumber), ReadOnly = true });
-        _peopleGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "姓", DataPropertyName = nameof(PersonRow.LastName), ReadOnly = true });
-        _peopleGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "名", DataPropertyName = nameof(PersonRow.FirstName), ReadOnly = true });
-        _peopleGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "現在の配膳場所", DataPropertyName = nameof(PersonRow.DeliveryPlace), ReadOnly = true });
-        _peopleGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "喫食日", DataPropertyName = nameof(PersonRow.EatDays), ReadOnly = true });
-        _peopleGrid.Columns.Add(new DataGridViewCheckBoxColumn { HeaderText = "牛乳", DataPropertyName = nameof(PersonRow.HasMilk), ReadOnly = true });
-        _peopleGrid.Columns.Add(new DataGridViewCheckBoxColumn { HeaderText = "アレルギー", DataPropertyName = nameof(PersonRow.HasAllergySupport), ReadOnly = true });
-        _peopleGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "開始日", DataPropertyName = nameof(PersonRow.ActiveFrom), ReadOnly = true });
-        _peopleGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "終了日", DataPropertyName = nameof(PersonRow.ActiveTo), ReadOnly = true });
-        _peopleGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "備考", DataPropertyName = nameof(PersonRow.Memo), ReadOnly = true });
+        _peopleGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "区分", DataPropertyName = nameof(PersonRow.Type), ReadOnly = true, Width = 60 });
+        _peopleGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "学年", DataPropertyName = nameof(PersonRow.Grade), ReadOnly = true, Width = 42 });
+        _peopleGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "組", DataPropertyName = nameof(PersonRow.ClassName), ReadOnly = true, Width = 42 });
+        _peopleGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "番号", DataPropertyName = nameof(PersonRow.StudentNumber), ReadOnly = true, Width = 48 });
+        _peopleGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "姓", DataPropertyName = nameof(PersonRow.LastName), ReadOnly = true, Width = 75 });
+        _peopleGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "名", DataPropertyName = nameof(PersonRow.FirstName), ReadOnly = true, Width = 75 });
+        _peopleGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "配膳場所", DataPropertyName = nameof(PersonRow.DeliveryPlace), ReadOnly = true, Width = 105 });
+        _peopleGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "喫食日", DataPropertyName = nameof(PersonRow.EatDays), ReadOnly = true, Width = 60 });
+        _peopleGrid.Columns.Add(new DataGridViewCheckBoxColumn { HeaderText = "牛乳", DataPropertyName = nameof(PersonRow.HasMilk), ReadOnly = true, Width = 45 });
+        _peopleGrid.Columns.Add(new DataGridViewCheckBoxColumn { HeaderText = "アレルギー", DataPropertyName = nameof(PersonRow.HasAllergySupport), ReadOnly = true, Width = 65 });
+        _peopleGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "開始日", DataPropertyName = nameof(PersonRow.ActiveFrom), ReadOnly = true, Width = 82 });
+        _peopleGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "終了日", DataPropertyName = nameof(PersonRow.ActiveTo), ReadOnly = true, Width = 82 });
+        _peopleGrid.Columns.Add(new DataGridViewTextBoxColumn
+        {
+            HeaderText = "備考",
+            DataPropertyName = nameof(PersonRow.Memo),
+            ReadOnly = true,
+            MinimumWidth = 80,
+            AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill
+        });
         _peopleGrid.DataSource = _personRows;
     }
 
