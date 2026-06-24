@@ -36,6 +36,7 @@ public sealed class ServedPeopleDetailsForm : Form
         {
             Type = person.TypeLabel,
             Name = person.FullName,
+            DeliveryPlace = person.GetDeliveryPlace(date),
             HasMilk = person.HasMilk,
             HasAllergySupport = person.HasAllergySupport,
             Memo = person.Memo
@@ -54,6 +55,7 @@ public sealed class ServedPeopleDetailsForm : Form
         };
         grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "区分", DataPropertyName = nameof(ServedPersonRow.Type), FillWeight = 70 });
         grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "氏名", DataPropertyName = nameof(ServedPersonRow.Name), FillWeight = 120 });
+        grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "配膳場所", DataPropertyName = nameof(ServedPersonRow.DeliveryPlace), FillWeight = 95 });
         grid.Columns.Add(new DataGridViewCheckBoxColumn { HeaderText = "牛乳", DataPropertyName = nameof(ServedPersonRow.HasMilk), FillWeight = 45 });
         grid.Columns.Add(new DataGridViewCheckBoxColumn { HeaderText = "アレルギー対応", DataPropertyName = nameof(ServedPersonRow.HasAllergySupport), FillWeight = 80 });
         grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "備考", DataPropertyName = nameof(ServedPersonRow.Memo), FillWeight = 160 });
@@ -86,6 +88,7 @@ public sealed class ServedPeopleDetailsForm : Form
     {
         public string Type { get; init; } = "";
         public string Name { get; init; } = "";
+        public string DeliveryPlace { get; init; } = "";
         public bool HasMilk { get; init; }
         public bool HasAllergySupport { get; init; }
         public string Memo { get; init; } = "";

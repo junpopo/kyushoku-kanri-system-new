@@ -483,14 +483,20 @@ public sealed class MainForm : Form
         {
             if (eventArgs.RowIndex < 0 ||
                 eventArgs.ColumnIndex < 2 ||
-                _monthlyMatrixGrid.Rows[eventArgs.RowIndex].Tag is not MonthlyMatrixRowTag rowTag ||
-                _monthlyMatrixGrid.Columns[eventArgs.ColumnIndex].Tag is not DateTime date ||
-                !IsStaffRoom(rowTag.DeliveryPlace))
+                _monthlyMatrixGrid.Columns[eventArgs.ColumnIndex].Tag is not DateTime date)
             {
                 return;
             }
 
-            ShowServedPeopleDetails(date, rowTag.DeliveryPlace, rowTag.Type);
+            var tag = _monthlyMatrixGrid.Rows[eventArgs.RowIndex].Tag;
+            if (tag is MonthlyMatrixRowTag rowTag && IsStaffRoom(rowTag.DeliveryPlace))
+            {
+                ShowServedPeopleDetails(date, rowTag.DeliveryPlace, rowTag.Type);
+            }
+            else if (tag is MonthlySummaryRowTag.Allergy)
+            {
+                ShowAllergyPeopleDetails(date);
+            }
         };
     }
 
@@ -667,6 +673,11 @@ public sealed class MainForm : Form
             }
 
             StyleMonthlyMatrixRow(matrixRow, month, daysInMonth, false);
+            if (firstPerson.Type == PersonType.Student)
+            {
+                MarkStudentMealCountChanges(matrixRow, month, daysInMonth);
+            }
+
             if (IsStaffRoom(group.Key.DeliveryPlace))
             {
                 for (var day = 1; day <= daysInMonth; day++)
@@ -701,12 +712,18 @@ public sealed class MainForm : Form
                 person.HasMilk &&
                 GetMealStatus(person, date) == MealStatus.Serve),
             Color.FromArgb(226, 243, 235));
-        AddMonthlyMatrixSummaryRow("アレルギー対応", month, daysInMonth,
+        var allergyRow = AddMonthlyMatrixSummaryRow("アレルギー対応", month, daysInMonth,
             date => _data.People.Count(person =>
                 IsActive(person, date) &&
                 person.HasAllergySupport &&
                 GetMealStatus(person, date) == MealStatus.Serve),
             Color.FromArgb(255, 239, 220));
+        allergyRow.Tag = MonthlySummaryRowTag.Allergy;
+        for (var day = 1; day <= daysInMonth; day++)
+        {
+            allergyRow.Cells[day + 1].ToolTipText =
+                "ダブルクリックするとアレルギー対応者を確認できます。";
+        }
         AddMonthlyMatrixSummaryRow("試食会 食数", month, daysInMonth,
             date => CountMeals(date, person => person.Type == PersonType.Tasting),
             Color.FromArgb(255, 235, 213));
@@ -769,6 +786,23 @@ public sealed class MainForm : Form
         dialog.ShowDialog(this);
     }
 
+    private void ShowAllergyPeopleDetails(DateTime date)
+    {
+        var people = _data.People
+            .Where(person =>
+                IsActive(person, date) &&
+                person.HasAllergySupport &&
+                GetMealStatus(person, date) == MealStatus.Serve)
+            .OrderBy(person => person.GetDeliveryPlace(date))
+            .ThenBy(person => person.Type)
+            .ThenBy(person => person.LastName)
+            .ThenBy(person => person.FirstName)
+            .ToList();
+
+        using var dialog = new ServedPeopleDetailsForm(date, "アレルギー対応", people);
+        dialog.ShowDialog(this);
+    }
+
     private static string PersonTypeLabel(PersonType personType)
     {
         return personType switch
@@ -783,7 +817,7 @@ public sealed class MainForm : Form
         };
     }
 
-    private void AddMonthlyMatrixSummaryRow(
+    private DataGridViewRow AddMonthlyMatrixSummaryRow(
         string label,
         DateTime month,
         int daysInMonth,
@@ -806,6 +840,41 @@ public sealed class MainForm : Form
         row.DefaultCellStyle.BackColor = backColor;
         row.DefaultCellStyle.Font = new Font(_monthlyMatrixGrid.Font, FontStyle.Bold);
         StyleMonthlyMatrixRow(row, month, daysInMonth, true);
+        return row;
+    }
+
+    private static void MarkStudentMealCountChanges(
+        DataGridViewRow row,
+        DateTime month,
+        int daysInMonth)
+    {
+        int? previousCount = null;
+        DateTime? previousDate = null;
+        for (var day = 1; day <= daysInMonth; day++)
+        {
+            var date = new DateTime(month.Year, month.Month, day);
+            if (date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
+            {
+                continue;
+            }
+
+            var cell = row.Cells[day + 1];
+            var count = Convert.ToInt32(cell.Value);
+            if (previousCount is not null && count != previousCount.Value)
+            {
+                var difference = count - previousCount.Value;
+                cell.Style.BackColor = Color.FromArgb(255, 210, 145);
+                cell.Style.ForeColor = Color.FromArgb(125, 55, 0);
+                cell.Style.Font = new Font(
+                    row.DataGridView?.Font ?? SystemFonts.DefaultFont,
+                    FontStyle.Bold);
+                cell.ToolTipText =
+                    $"{previousDate:M/d}の{previousCount}人から{difference:+#;-#;0}人変化しています。";
+            }
+
+            previousCount = count;
+            previousDate = date;
+        }
     }
 
     private static void StyleMonthlyMatrixRow(
@@ -1440,6 +1509,11 @@ public sealed class MainForm : Form
     }
 
     private sealed record MonthlyMatrixRowTag(string DeliveryPlace, PersonType Type);
+
+    private enum MonthlySummaryRowTag
+    {
+        Allergy
+    }
 
     public sealed class MealStatusDetail
     {
