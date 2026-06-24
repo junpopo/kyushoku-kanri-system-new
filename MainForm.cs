@@ -815,6 +815,11 @@ public sealed class MainForm : Form
 
     private static int DeliveryPlaceSortKey(string deliveryPlace)
     {
+        if (IsStaffRoom(deliveryPlace))
+        {
+            return 20000;
+        }
+
         var match = System.Text.RegularExpressions.Regex.Match(
             deliveryPlace,
             @"(?<grade>\d+)年(?<class>\d+)組");
