@@ -419,14 +419,7 @@ public sealed class PersonEditForm : Form
         Person.Name = $"{Person.LastName} {Person.FirstName}".Trim();
         Person.DeliveryPlace1 = _deliveryPlace.Text.Trim();
         Person.DeliveryPlace2 = "";
-        if (Person.DeliveryPlaceHistories.Count == 0)
-        {
-            Person.DeliveryPlaceHistories.Add(new DeliveryPlaceHistory
-            {
-                DeliveryPlace = Person.DeliveryPlace1,
-                StartDate = _activeFrom.Value.Date
-            });
-        }
+        SyncCurrentDeliveryPlace(Person.DeliveryPlace1, _activeFrom.Value.Date);
 
         Person.EatMonday = _eatMonday.Checked;
         Person.EatTuesday = _eatTuesday.Checked;
@@ -439,6 +432,46 @@ public sealed class PersonEditForm : Form
         Person.ActiveTo = _hasActiveTo.Checked ? _activeTo.Value.Date : null;
         Person.Memo = _memo.Text.Trim();
         return true;
+    }
+
+    private void SyncCurrentDeliveryPlace(string deliveryPlace, DateTime activeFrom)
+    {
+        var effectiveDate = Person.DeliveryPlaceHistories.Count == 0
+            ? activeFrom
+            : activeFrom > DateTime.Today ? activeFrom : DateTime.Today;
+        var currentHistory = Person.DeliveryPlaceHistories
+            .Where(history => history.StartDate.Date <= effectiveDate &&
+                              (history.EndDate is null || history.EndDate.Value.Date >= effectiveDate))
+            .OrderByDescending(history => history.StartDate)
+            .FirstOrDefault();
+
+        if (currentHistory?.DeliveryPlace.Equals(
+                deliveryPlace, StringComparison.CurrentCultureIgnoreCase) == true)
+        {
+            return;
+        }
+
+        if (currentHistory is not null)
+        {
+            if (currentHistory.StartDate.Date == effectiveDate)
+            {
+                currentHistory.DeliveryPlace = deliveryPlace;
+                return;
+            }
+
+            currentHistory.EndDate = effectiveDate.AddDays(-1);
+        }
+
+        var nextHistory = Person.DeliveryPlaceHistories
+            .Where(history => history.StartDate.Date > effectiveDate)
+            .OrderBy(history => history.StartDate)
+            .FirstOrDefault();
+        Person.DeliveryPlaceHistories.Add(new DeliveryPlaceHistory
+        {
+            DeliveryPlace = deliveryPlace,
+            StartDate = effectiveDate,
+            EndDate = nextHistory?.StartDate.Date.AddDays(-1)
+        });
     }
 
     private void UpdateStudentFields()
