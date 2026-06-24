@@ -24,15 +24,19 @@ public sealed class DeliveryPlaceBasicCountForm : Form
         _loadedFiscalYear = initialFiscalYear;
         _allCounts = basicCounts.Select(item =>
         {
-            if (item.FiscalYear != 0)
+            var copy = item.FiscalYear != 0
+                ? Clone(item)
+                : CreateForecastRow(
+                    _loadedFiscalYear,
+                    item.DeliveryPlace,
+                    "生徒",
+                    item.BasicCount);
+            if (string.IsNullOrWhiteSpace(copy.Category))
             {
-                return Clone(item);
+                copy.Category = "生徒";
             }
 
-            return CreateForecastRow(
-                _loadedFiscalYear,
-                item.DeliveryPlace,
-                item.BasicCount);
+            return copy;
         }).ToList();
 
         Text = "配膳別基本数（月別）";
@@ -128,6 +132,14 @@ public sealed class DeliveryPlaceBasicCountForm : Form
             Width = 145,
             Frozen = true
         });
+        _grid.Columns.Add(new DataGridViewComboBoxColumn
+        {
+            HeaderText = "区分",
+            DataPropertyName = nameof(DeliveryPlaceBasicCount.Category),
+            DataSource = new[] { "生徒", "職員" },
+            Width = 70,
+            Frozen = true
+        });
         AddMonthColumn("4月", nameof(DeliveryPlaceBasicCount.April));
         AddMonthColumn("5月", nameof(DeliveryPlaceBasicCount.May));
         AddMonthColumn("6月", nameof(DeliveryPlaceBasicCount.June));
@@ -149,19 +161,20 @@ public sealed class DeliveryPlaceBasicCountForm : Form
         };
         _grid.CellEndEdit += (_, eventArgs) =>
         {
-            if (eventArgs.ColumnIndex < 1 ||
-                eventArgs.ColumnIndex > 12 ||
+            if (eventArgs.ColumnIndex < 2 ||
+                eventArgs.ColumnIndex > 13 ||
                 eventArgs.RowIndex < 0 ||
                 _grid.Rows[eventArgs.RowIndex].DataBoundItem is not DeliveryPlaceBasicCount item)
             {
                 return;
             }
 
-            var value = GetMonthValue(item, eventArgs.ColumnIndex - 1);
-            for (var monthIndex = eventArgs.ColumnIndex; monthIndex < 12; monthIndex++)
+            var editedMonthIndex = eventArgs.ColumnIndex - 2;
+            var value = GetMonthValue(item, editedMonthIndex);
+            for (var monthIndex = editedMonthIndex + 1; monthIndex < 12; monthIndex++)
             {
                 SetMonthValue(item, monthIndex, value);
-                _grid.Rows[eventArgs.RowIndex].Cells[monthIndex + 1].Value = value;
+                _grid.Rows[eventArgs.RowIndex].Cells[monthIndex + 2].Value = value;
             }
 
             _grid.InvalidateRow(eventArgs.RowIndex);
@@ -202,7 +215,8 @@ public sealed class DeliveryPlaceBasicCountForm : Form
         _rows.Clear();
         foreach (var item in _allCounts
             .Where(item => item.FiscalYear == fiscalYear)
-            .OrderBy(item => item.DeliveryPlace))
+            .OrderBy(item => item.DeliveryPlace)
+            .ThenBy(item => item.Category))
         {
             _rows.Add(Clone(item));
         }
@@ -223,10 +237,16 @@ public sealed class DeliveryPlaceBasicCountForm : Form
         var fiscalYear = _loadedFiscalYear;
         var aprilDate = new DateTime(fiscalYear, 4, 1);
         var counts = _people
-            .Where(person => IsActive(person, aprilDate))
-            .GroupBy(person => NormalizePlace(person.GetDeliveryPlace(aprilDate)))
+            .Where(person =>
+                IsActive(person, aprilDate) &&
+                person.Type != PersonType.Tasting)
+            .GroupBy(person => new
+            {
+                Place = NormalizePlace(person.GetDeliveryPlace(aprilDate)),
+                Category = BasicCategory(person)
+            })
             .ToDictionary(
-                group => group.Key,
+                group => $"{group.Key.Place}\u001f{group.Key.Category}",
                 group => group.Count(),
                 StringComparer.CurrentCultureIgnoreCase);
         var places = KnownPlaces(aprilDate).ToList();
@@ -234,8 +254,11 @@ public sealed class DeliveryPlaceBasicCountForm : Form
         _rows.Clear();
         foreach (var place in places)
         {
-            var aprilCount = counts.GetValueOrDefault(place);
-            _rows.Add(CreateForecastRow(fiscalYear, place, aprilCount));
+            foreach (var category in new[] { "生徒", "職員" })
+            {
+                var aprilCount = counts.GetValueOrDefault($"{place}\u001f{category}");
+                _rows.Add(CreateForecastRow(fiscalYear, place, category, aprilCount));
+            }
         }
     }
 
@@ -245,22 +268,36 @@ public sealed class DeliveryPlaceBasicCountForm : Form
         var fiscalYear = _loadedFiscalYear;
         var aprilDate = new DateTime(fiscalYear, 4, 1);
         var counts = _people
-            .Where(person => IsActive(person, aprilDate))
-            .GroupBy(person => NormalizePlace(person.GetDeliveryPlace(aprilDate)))
+            .Where(person =>
+                IsActive(person, aprilDate) &&
+                person.Type != PersonType.Tasting)
+            .GroupBy(person => new
+            {
+                Place = NormalizePlace(person.GetDeliveryPlace(aprilDate)),
+                Category = BasicCategory(person)
+            })
             .ToDictionary(
-                group => group.Key,
+                group => $"{group.Key.Place}\u001f{group.Key.Category}",
                 group => group.Count(),
                 StringComparer.CurrentCultureIgnoreCase);
 
         foreach (var place in KnownPlaces(aprilDate))
         {
-            if (_rows.Any(item =>
-                item.DeliveryPlace.Trim().Equals(place, StringComparison.CurrentCultureIgnoreCase)))
+            foreach (var category in new[] { "生徒", "職員" })
             {
-                continue;
-            }
+                if (_rows.Any(item =>
+                    item.DeliveryPlace.Trim().Equals(place, StringComparison.CurrentCultureIgnoreCase) &&
+                    item.Category.Equals(category, StringComparison.CurrentCultureIgnoreCase)))
+                {
+                    continue;
+                }
 
-            _rows.Add(CreateForecastRow(fiscalYear, place, counts.GetValueOrDefault(place)));
+                _rows.Add(CreateForecastRow(
+                    fiscalYear,
+                    place,
+                    category,
+                    counts.GetValueOrDefault($"{place}\u001f{category}")));
+            }
         }
     }
 
@@ -299,9 +336,17 @@ public sealed class DeliveryPlaceBasicCountForm : Form
                 var copy = Clone(item);
                 copy.FiscalYear = _loadedFiscalYear;
                 copy.DeliveryPlace = copy.DeliveryPlace.Trim();
+                copy.Category = copy.Category.Trim();
                 return copy;
             })
             .ToList();
+
+        if (normalized.Any(item => item.Category is not ("生徒" or "職員")))
+        {
+            MessageBox.Show("区分は生徒または職員を選択してください。", "入力確認",
+                MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return false;
+        }
 
         if (normalized.Any(HasNegativeCount))
         {
@@ -311,11 +356,14 @@ public sealed class DeliveryPlaceBasicCountForm : Form
         }
 
         var duplicate = normalized
-            .GroupBy(item => item.DeliveryPlace, StringComparer.CurrentCultureIgnoreCase)
+            .GroupBy(
+                item => $"{item.DeliveryPlace}\u001f{item.Category}",
+                StringComparer.CurrentCultureIgnoreCase)
             .FirstOrDefault(group => group.Count() > 1);
         if (duplicate is not null)
         {
-            MessageBox.Show($"{duplicate.Key}が重複しています。", "入力確認",
+            var item = duplicate.First();
+            MessageBox.Show($"{item.DeliveryPlace}の{item.Category}が重複しています。", "入力確認",
                 MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return false;
         }
@@ -335,6 +383,7 @@ public sealed class DeliveryPlaceBasicCountForm : Form
         DeliveryPlaceBasicCounts = _allCounts
             .OrderBy(item => item.FiscalYear)
             .ThenBy(item => item.DeliveryPlace)
+            .ThenBy(item => item.Category)
             .Select(Clone)
             .ToList();
         DialogResult = DialogResult.OK;
@@ -344,12 +393,14 @@ public sealed class DeliveryPlaceBasicCountForm : Form
     private static DeliveryPlaceBasicCount CreateForecastRow(
         int fiscalYear,
         string deliveryPlace,
+        string category,
         int count)
     {
         return new DeliveryPlaceBasicCount
         {
             FiscalYear = fiscalYear,
             DeliveryPlace = deliveryPlace,
+            Category = category,
             April = count,
             May = count,
             June = count,
@@ -371,6 +422,7 @@ public sealed class DeliveryPlaceBasicCountForm : Form
         {
             FiscalYear = item.FiscalYear,
             DeliveryPlace = item.DeliveryPlace,
+            Category = item.Category,
             April = item.April,
             May = item.May,
             June = item.June,
@@ -444,6 +496,11 @@ public sealed class DeliveryPlaceBasicCountForm : Form
     private static string NormalizePlace(string place)
     {
         return string.IsNullOrWhiteSpace(place) ? "未設定" : place.Trim();
+    }
+
+    private static string BasicCategory(Person person)
+    {
+        return person.Type == PersonType.Student ? "生徒" : "職員";
     }
 
 }

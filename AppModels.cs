@@ -123,6 +123,7 @@ public sealed class DeliveryPlaceBasicCount
 {
     public int FiscalYear { get; set; }
     public string DeliveryPlace { get; set; } = "";
+    public string Category { get; set; } = "";
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public int BasicCount { get; set; }
     public int April { get; set; }

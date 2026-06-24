@@ -728,7 +728,10 @@ public sealed class MainForm : Form
                 .ToList();
             var firstPerson = people[0];
             values[0] = group.Key.DeliveryPlace;
-            values[1] = GetDeliveryPlaceBasicCount(month, group.Key.DeliveryPlace)?.ToString() ?? "";
+            values[1] = GetDeliveryPlaceBasicCount(
+                month,
+                group.Key.DeliveryPlace,
+                group.Key.Type)?.ToString() ?? "";
             values[2] = firstPerson.TypeLabel;
             var monthTotal = 0;
             for (var day = 1; day <= daysInMonth; day++)
@@ -840,11 +843,21 @@ public sealed class MainForm : Form
             GetMealStatus(person, date) == MealStatus.Serve);
     }
 
-    private int? GetDeliveryPlaceBasicCount(DateTime month, string deliveryPlace)
+    private int? GetDeliveryPlaceBasicCount(
+        DateTime month,
+        string deliveryPlace,
+        PersonType personType)
     {
+        if (personType == PersonType.Tasting)
+        {
+            return null;
+        }
+
         var fiscalYear = month.Month >= 4 ? month.Year : month.Year - 1;
+        var category = personType == PersonType.Student ? "生徒" : "職員";
         var item = _data.DeliveryPlaceBasicCounts.FirstOrDefault(basicCount =>
             basicCount.FiscalYear == fiscalYear &&
+            basicCount.Category.Equals(category, StringComparison.CurrentCultureIgnoreCase) &&
             NormalizeDeliveryPlace(basicCount.DeliveryPlace)
                 .Equals(
                     NormalizeDeliveryPlace(deliveryPlace),
