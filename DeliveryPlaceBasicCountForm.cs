@@ -169,6 +169,25 @@ public sealed class DeliveryPlaceBasicCountForm : Form
                 MessageBoxButtons.OK, MessageBoxIcon.Warning);
             eventArgs.ThrowException = false;
         };
+        _grid.CellEndEdit += (_, eventArgs) =>
+        {
+            if (eventArgs.ColumnIndex < 1 ||
+                eventArgs.ColumnIndex > 12 ||
+                eventArgs.RowIndex < 0 ||
+                _grid.Rows[eventArgs.RowIndex].DataBoundItem is not DeliveryPlaceBasicCount item)
+            {
+                return;
+            }
+
+            var value = GetMonthValue(item, eventArgs.ColumnIndex - 1);
+            for (var monthIndex = eventArgs.ColumnIndex; monthIndex < 12; monthIndex++)
+            {
+                SetMonthValue(item, monthIndex, value);
+                _grid.Rows[eventArgs.RowIndex].Cells[monthIndex + 1].Value = value;
+            }
+
+            _grid.InvalidateRow(eventArgs.RowIndex);
+        };
     }
 
     private void AddMonthColumn(string header, string propertyName)
@@ -395,6 +414,47 @@ public sealed class DeliveryPlaceBasicCountForm : Form
                item.July < 0 || item.August < 0 || item.September < 0 ||
                item.October < 0 || item.November < 0 || item.December < 0 ||
                item.January < 0 || item.February < 0 || item.March < 0;
+    }
+
+    private static int GetMonthValue(DeliveryPlaceBasicCount item, int monthIndex)
+    {
+        return monthIndex switch
+        {
+            0 => item.April,
+            1 => item.May,
+            2 => item.June,
+            3 => item.July,
+            4 => item.August,
+            5 => item.September,
+            6 => item.October,
+            7 => item.November,
+            8 => item.December,
+            9 => item.January,
+            10 => item.February,
+            _ => item.March
+        };
+    }
+
+    private static void SetMonthValue(
+        DeliveryPlaceBasicCount item,
+        int monthIndex,
+        int value)
+    {
+        switch (monthIndex)
+        {
+            case 0: item.April = value; break;
+            case 1: item.May = value; break;
+            case 2: item.June = value; break;
+            case 3: item.July = value; break;
+            case 4: item.August = value; break;
+            case 5: item.September = value; break;
+            case 6: item.October = value; break;
+            case 7: item.November = value; break;
+            case 8: item.December = value; break;
+            case 9: item.January = value; break;
+            case 10: item.February = value; break;
+            default: item.March = value; break;
+        }
     }
 
     private static bool IsActive(Person person, DateTime date)
