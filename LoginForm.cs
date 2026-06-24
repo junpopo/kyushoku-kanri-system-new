@@ -21,6 +21,7 @@ public sealed class LoginForm : Form
         MinimizeBox = false;
 
         Controls.Add(CreateLayout());
+        Shown += (_, _) => _loginId.Focus();
     }
 
     private Control CreateLayout()
