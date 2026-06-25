@@ -155,10 +155,8 @@ public sealed class IndividualAnnualMealCountForm : Form
         _deliveryPlaceFilter.DropDownStyle = ComboBoxStyle.DropDownList;
         _deliveryPlaceFilter.Items.Add("すべて");
         _deliveryPlaceFilter.Items.AddRange(_people
-            .SelectMany(person => new[] { person.DeliveryPlace1 }
-                .Concat(person.DeliveryPlaceHistories.Select(history => history.DeliveryPlace)))
+            .Select(CurrentDeliveryPlace)
             .Where(place => !string.IsNullOrWhiteSpace(place))
-            .Select(place => place.Trim())
             .Distinct(StringComparer.CurrentCultureIgnoreCase)
             .OrderBy(place => place)
             .Cast<object>()
@@ -217,7 +215,7 @@ public sealed class IndividualAnnualMealCountForm : Form
         AddTextColumn("組", nameof(PersonAnnualMealRow.ClassName), 38, frozen: true);
         AddTextColumn("番号", nameof(PersonAnnualMealRow.StudentNumber), 48, frozen: true);
         AddTextColumn("氏名", nameof(PersonAnnualMealRow.Name), 115, frozen: true);
-        AddTextColumn("配膳場所", nameof(PersonAnnualMealRow.DeliveryPlace), 90, frozen: true);
+        AddTextColumn("現在の配膳場所", nameof(PersonAnnualMealRow.DeliveryPlace), 105, frozen: true);
 
         for (var fiscalMonthIndex = 0; fiscalMonthIndex < 12; fiscalMonthIndex++)
         {
@@ -263,7 +261,7 @@ public sealed class IndividualAnnualMealCountForm : Form
             .Where(MatchesType)
             .Where(MatchesGrade)
             .Where(MatchesClass)
-            .Where(person => MatchesDeliveryPlace(person, dates))
+            .Where(MatchesDeliveryPlace)
             .Where(MatchesPerson)
             .Where(person => MatchesKeyword(person, keyword))
             .OrderBy(person => person.Type)
@@ -300,9 +298,7 @@ public sealed class IndividualAnnualMealCountForm : Form
             ClassName = person.ClassName,
             StudentNumber = person.StudentNumber,
             Name = person.FullName,
-            DeliveryPlace = MainDeliveryPlace(
-                person,
-                dates.Where(date => IsActive(person, date)).ToList()),
+            DeliveryPlace = CurrentDeliveryPlace(person),
             ActualCount = servedDates.Count(date => date.Date <= DateTime.Today),
             PlannedCount = servedDates.Count(date => date.Date > DateTime.Today),
             TotalCount = servedDates.Count,
@@ -374,9 +370,7 @@ public sealed class IndividualAnnualMealCountForm : Form
                    StringComparison.CurrentCultureIgnoreCase);
     }
 
-    private bool MatchesDeliveryPlace(
-        Person person,
-        IReadOnlyCollection<DateTime> fiscalYearDates)
+    private bool MatchesDeliveryPlace(Person person)
     {
         if (_deliveryPlaceFilter.SelectedIndex <= 0)
         {
@@ -384,11 +378,9 @@ public sealed class IndividualAnnualMealCountForm : Form
         }
 
         var selectedPlace = Convert.ToString(_deliveryPlaceFilter.SelectedItem) ?? "";
-        return fiscalYearDates.Any(date =>
-            IsActive(person, date) &&
-            person.GetDeliveryPlace(date).Equals(
-                selectedPlace,
-                StringComparison.CurrentCultureIgnoreCase));
+        return CurrentDeliveryPlace(person).Equals(
+            selectedPlace,
+            StringComparison.CurrentCultureIgnoreCase);
     }
 
     private bool MatchesPerson(Person person)
@@ -474,18 +466,10 @@ public sealed class IndividualAnnualMealCountForm : Form
         return planned > 0 ? $"予{planned}" : $"実{actual}";
     }
 
-    private static string MainDeliveryPlace(
-        Person person,
-        IReadOnlyCollection<DateTime> dates)
+    private static string CurrentDeliveryPlace(Person person)
     {
-        return dates
-            .Select(person.GetDeliveryPlace)
-            .Where(place => !string.IsNullOrWhiteSpace(place))
-            .GroupBy(place => place.Trim(), StringComparer.CurrentCultureIgnoreCase)
-            .OrderByDescending(group => group.Count())
-            .ThenBy(group => group.Key)
-            .Select(group => group.Key)
-            .FirstOrDefault() ?? "未設定";
+        var place = person.GetDeliveryPlace(DateTime.Today);
+        return string.IsNullOrWhiteSpace(place) ? "未設定" : place.Trim();
     }
 
     private static bool IsActive(Person person, DateTime date)
