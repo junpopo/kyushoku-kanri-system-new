@@ -68,10 +68,10 @@ public sealed class PersonMonthlyMealMatrixForm : Form
         var close = new Button
         {
             Text = "閉じる",
-            DialogResult = DialogResult.OK,
             AutoSize = true,
             Padding = new Padding(16, 5, 16, 5)
         };
+        close.Click += (_, _) => Close();
         closePanel.Controls.Add(close);
         AcceptButton = close;
         CancelButton = close;
