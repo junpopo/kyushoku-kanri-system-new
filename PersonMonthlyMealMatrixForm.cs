@@ -4,17 +4,17 @@ public sealed class PersonMonthlyMealMatrixForm : Form
 {
     private readonly DateTime _month;
     private readonly Person _person;
-    private readonly IReadOnlyCollection<MealRecord> _mealRecords;
+    private readonly Func<DateTime, MealStatus> _mealStatusProvider;
     private readonly DataGridView _grid = new();
 
     public PersonMonthlyMealMatrixForm(
         DateTime month,
         Person person,
-        IReadOnlyCollection<MealRecord> mealRecords)
+        Func<DateTime, MealStatus> mealStatusProvider)
     {
         _month = new DateTime(month.Year, month.Month, 1);
         _person = person;
-        _mealRecords = mealRecords;
+        _mealStatusProvider = mealStatusProvider;
 
         Text = "月間喫食状況";
         Width = 1320;
@@ -154,19 +154,17 @@ public sealed class PersonMonthlyMealMatrixForm : Form
             return "外";
         }
 
-        var record = _mealRecords.FirstOrDefault(item =>
-            item.PersonId == _person.Id && item.Date.Date == date.Date);
-        if (record is not null)
+        var status = _mealStatusProvider(date);
+        if (status != MealStatus.Serve)
         {
-            return record.Status switch
+            return status switch
             {
-                MealStatus.Serve => "○",
                 MealStatus.Absent => "欠",
                 _ => "停"
             };
         }
 
-        return _person.EatsOn(date.DayOfWeek) ? "○" : "－";
+        return "○";
     }
 
     private string MilkStatusLabel(DateTime date)

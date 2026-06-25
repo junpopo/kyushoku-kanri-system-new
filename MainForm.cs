@@ -220,7 +220,7 @@ public sealed class MainForm : Form
         {
             Dock = DockStyle.Fill,
             AutoSize = true,
-            WrapContents = false
+            WrapContents = true
         };
         buttons.Controls.Add(CreateButton("CSV名簿を読み込み", ImportRoster, requiresAdmin: true));
         buttons.Controls.Add(CreateButton("1人追加", AddPerson, requiresAdmin: true));
@@ -229,6 +229,7 @@ public sealed class MainForm : Form
         buttons.Controls.Add(CreateButton("名簿を全員削除", DeleteAllPeople, requiresAdmin: true));
         buttons.Controls.Add(CreateButton("配膳場所管理", ManageDeliveryPlaces, requiresAdmin: true));
         buttons.Controls.Add(CreateButton("配膳別基本数", ManageDeliveryPlaceBasicCounts, requiresAdmin: true));
+        buttons.Controls.Add(CreateButton("給食開始・停止・再開", ManageMealSchedule, requiresAdmin: true));
         buttons.Controls.Add(CreateButton("年度登録", RegisterFiscalYear, requiresAdmin: true));
         buttons.Controls.Add(CreateButton("終了", Close));
 
@@ -573,7 +574,16 @@ public sealed class MainForm : Form
         foreach (var person in activePeople)
         {
             var record = _data.MealRecords.FirstOrDefault(r => r.PersonId == person.Id && r.Date.Date == date);
-            _dailyRows.Add(DailyMealRow.From(person, record, date));
+            var row = DailyMealRow.From(person, record, date);
+            if (record is null)
+            {
+                var status = GetMealStatus(person, date);
+                row.Status = StatusToLabel(status);
+                row.IsServed = status == MealStatus.Serve;
+                row.Reason = GetMealStatusReason(person, date);
+            }
+
+            _dailyRows.Add(row);
         }
 
         UpdateDailyTotal();
@@ -996,7 +1006,7 @@ public sealed class MainForm : Form
             date,
             $"{deliveryPlace} / {typeLabel}",
             people,
-            _data.MealRecords);
+            GetMealStatus);
         dialog.ShowDialog(this);
     }
 
@@ -1017,7 +1027,7 @@ public sealed class MainForm : Form
             date,
             "アレルギー対応",
             people,
-            _data.MealRecords);
+            GetMealStatus);
         dialog.ShowDialog(this);
     }
 
@@ -1040,7 +1050,7 @@ public sealed class MainForm : Form
             date,
             "牛乳停止",
             people,
-            _data.MealRecords);
+            GetMealStatus);
         dialog.ShowDialog(this);
     }
 
@@ -1066,8 +1076,6 @@ public sealed class MainForm : Form
                     GetMealStatus(person, date) == MealStatus.Stop)
                 .Select(person =>
                 {
-                    var record = _data.MealRecords.FirstOrDefault(item =>
-                        item.PersonId == person.Id && item.Date.Date == date.Date);
                     return new MealStatusDetail
                     {
                         Type = person.TypeLabel,
@@ -1077,8 +1085,7 @@ public sealed class MainForm : Form
                         Name = person.FullName,
                         DeliveryPlace = NormalizeDeliveryPlace(person.GetDeliveryPlace(date)),
                         Status = "停止",
-                        Reason = record?.Reason ??
-                                 (!person.EatsOn(date.DayOfWeek) ? "喫食日ではありません" : "")
+                        Reason = GetMealStatusReason(person, date)
                     };
                 })
                 .OrderBy(detail => DeliveryPlaceSortKey(detail.DeliveryPlace))
@@ -1367,8 +1374,6 @@ public sealed class MainForm : Form
                 NormalizeDeliveryPlace(monthlyRow.DeliveryPlace))
             .Select(person =>
             {
-                var record = _data.MealRecords.FirstOrDefault(item =>
-                    item.PersonId == person.Id && item.Date.Date == monthlyRow.DateValue.Date);
                 var status = GetMealStatus(person, monthlyRow.DateValue);
                 return new MealStatusDetail
                 {
@@ -1379,8 +1384,7 @@ public sealed class MainForm : Form
                     Name = person.FullName,
                     DeliveryPlace = NormalizeDeliveryPlace(person.GetDeliveryPlace(monthlyRow.DateValue)),
                     Status = StatusToLabel(status),
-                    Reason = record?.Reason ??
-                             (!person.EatsOn(monthlyRow.DateValue.DayOfWeek) ? "喫食日ではありません" : "")
+                    Reason = GetMealStatusReason(person, monthlyRow.DateValue)
                 };
             })
             .Where(detail => detail.Status != "提供")
@@ -1407,7 +1411,107 @@ public sealed class MainForm : Form
     {
         var record = _data.MealRecords.FirstOrDefault(item =>
             item.PersonId == person.Id && item.Date.Date == date.Date);
-        return record?.Status ?? (person.EatsOn(date.DayOfWeek) ? MealStatus.Serve : MealStatus.Stop);
+        if (record is not null)
+        {
+            return record.Status;
+        }
+
+        var change = ApplicableMealScheduleChange(person, date);
+        if (HasPendingHigherPriorityStart(person, date, change))
+        {
+            return MealStatus.Stop;
+        }
+
+        if (change?.Action == MealScheduleAction.Stop)
+        {
+            return MealStatus.Stop;
+        }
+
+        return person.EatsOn(date.DayOfWeek) ? MealStatus.Serve : MealStatus.Stop;
+    }
+
+    private string GetMealStatusReason(Person person, DateTime date)
+    {
+        var record = _data.MealRecords.FirstOrDefault(item =>
+            item.PersonId == person.Id && item.Date.Date == date.Date);
+        if (record is not null)
+        {
+            return record.Reason;
+        }
+
+        var change = ApplicableMealScheduleChange(person, date);
+        if (HasPendingHigherPriorityStart(person, date, change))
+        {
+            return "給食開始日前";
+        }
+
+        if (change?.Action == MealScheduleAction.Stop)
+        {
+            return string.IsNullOrWhiteSpace(change.Reason)
+                ? $"{MealScheduleScopeLabel(change.Scope)}で給食停止"
+                : change.Reason;
+        }
+
+        return person.EatsOn(date.DayOfWeek) ? "" : "喫食日ではありません";
+    }
+
+    private MealScheduleChange? ApplicableMealScheduleChange(Person person, DateTime date)
+    {
+        return _data.MealScheduleChanges
+            .Where(change =>
+                change.EffectiveDate.Date <= date.Date &&
+                MealScheduleApplies(change, person))
+            .OrderByDescending(change => change.EffectiveDate)
+            .ThenByDescending(change => MealScheduleScopePriority(change.Scope))
+            .FirstOrDefault();
+    }
+
+    private bool HasPendingHigherPriorityStart(
+        Person person,
+        DateTime date,
+        MealScheduleChange? currentChange)
+    {
+        var currentPriority = currentChange is null
+            ? -1
+            : MealScheduleScopePriority(currentChange.Scope);
+        return _data.MealScheduleChanges.Any(change =>
+            change.Action == MealScheduleAction.Start &&
+            change.EffectiveDate.Date > date.Date &&
+            MealScheduleApplies(change, person) &&
+            MealScheduleScopePriority(change.Scope) > currentPriority);
+    }
+
+    private static bool MealScheduleApplies(MealScheduleChange change, Person person)
+    {
+        return change.Scope switch
+        {
+            MealScheduleScope.All => true,
+            MealScheduleScope.Grade =>
+                person.Type == PersonType.Student &&
+                person.Grade.Equals(change.Grade, StringComparison.CurrentCultureIgnoreCase),
+            MealScheduleScope.Person => change.PersonId == person.Id,
+            _ => false
+        };
+    }
+
+    private static int MealScheduleScopePriority(MealScheduleScope scope)
+    {
+        return scope switch
+        {
+            MealScheduleScope.All => 0,
+            MealScheduleScope.Grade => 1,
+            _ => 2
+        };
+    }
+
+    private static string MealScheduleScopeLabel(MealScheduleScope scope)
+    {
+        return scope switch
+        {
+            MealScheduleScope.All => "全体",
+            MealScheduleScope.Grade => "学年",
+            _ => "個人"
+        };
     }
 
     private static string JapaneseDayOfWeek(DayOfWeek dayOfWeek)
@@ -1605,6 +1709,23 @@ public sealed class MainForm : Form
         RefreshMonthly();
     }
 
+    private void ManageMealSchedule()
+    {
+        using var dialog = new MealScheduleManagerForm(
+            _data.MealScheduleChanges,
+            _data.People);
+        if (dialog.ShowDialog(this) != DialogResult.OK)
+        {
+            return;
+        }
+
+        _data.MealScheduleChanges = dialog.Changes;
+        _repository.Save(_data);
+        RefreshDaily();
+        RefreshMonthly();
+        RefreshSummary();
+    }
+
     private void DeleteSelectedPerson()
     {
         var selected = SelectedPerson();
@@ -1622,6 +1743,9 @@ public sealed class MainForm : Form
 
         _data.People.Remove(selected);
         _data.MealRecords.RemoveAll(r => r.PersonId == selected.Id);
+        _data.MealScheduleChanges.RemoveAll(change =>
+            change.Scope == MealScheduleScope.Person &&
+            change.PersonId == selected.Id);
         SaveAll();
     }
 
@@ -1648,6 +1772,7 @@ public sealed class MainForm : Form
 
         _data.People.Clear();
         _data.MealRecords.Clear();
+        _data.MealScheduleChanges.Clear();
         SaveAll();
         MessageBox.Show("名簿を全員削除しました。", "名簿を全員削除",
             MessageBoxButtons.OK, MessageBoxIcon.Information);

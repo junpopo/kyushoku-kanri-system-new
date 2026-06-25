@@ -25,6 +25,20 @@ public enum UserRole
     User
 }
 
+public enum MealScheduleScope
+{
+    All,
+    Grade,
+    Person
+}
+
+public enum MealScheduleAction
+{
+    Start,
+    Stop,
+    Resume
+}
+
 public sealed class AppUser
 {
     public Guid Id { get; set; } = Guid.NewGuid();
@@ -119,6 +133,17 @@ public sealed class MealRecord
     public string Reason { get; set; } = "";
 }
 
+public sealed class MealScheduleChange
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public DateTime EffectiveDate { get; set; } = DateTime.Today;
+    public MealScheduleScope Scope { get; set; } = MealScheduleScope.Person;
+    public string Grade { get; set; } = "";
+    public Guid? PersonId { get; set; }
+    public MealScheduleAction Action { get; set; } = MealScheduleAction.Stop;
+    public string Reason { get; set; } = "";
+}
+
 public sealed class DeliveryPlaceBasicCount
 {
     public int FiscalYear { get; set; }
@@ -146,6 +171,7 @@ public sealed class AppData
     public List<AppUser> Users { get; set; } = [];
     public List<Person> People { get; set; } = [];
     public List<MealRecord> MealRecords { get; set; } = [];
+    public List<MealScheduleChange> MealScheduleChanges { get; set; } = [];
     public List<string> DeliveryPlaces { get; set; } = [];
     public List<DeliveryPlaceBasicCount> DeliveryPlaceBasicCounts { get; set; } = [];
 }
