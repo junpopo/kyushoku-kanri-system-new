@@ -709,13 +709,22 @@ public sealed class MainForm : Form
         for (var day = 1; day <= daysInMonth; day++)
         {
             var date = new DateTime(month.Year, month.Month, day);
-            _monthlyMatrixGrid.Columns.Add(new DataGridViewTextBoxColumn
+            var column = new DataGridViewTextBoxColumn
             {
                 HeaderText = $"{day}\n{JapaneseDayOfWeek(date.DayOfWeek)}",
                 Width = 36,
                 SortMode = DataGridViewColumnSortMode.NotSortable,
                 Tag = date
-            });
+            };
+            if (IsNoMealDate(date))
+            {
+                column.HeaderCell.Style.ForeColor = Color.Firebrick;
+                column.HeaderCell.Style.Font = new Font(
+                    _monthlyMatrixGrid.Font,
+                    FontStyle.Bold);
+            }
+
+            _monthlyMatrixGrid.Columns.Add(column);
         }
 
         _monthlyMatrixGrid.Columns.Add(new DataGridViewTextBoxColumn
@@ -742,6 +751,7 @@ public sealed class MainForm : Form
 
         int? previousGrade = null;
         DataGridViewRow? previousMatrixRow = null;
+        var tastingSectionStarted = false;
         foreach (var group in groups)
         {
             var currentGrade = SchoolGrade(group.Key.DeliveryPlace);
@@ -750,6 +760,14 @@ public sealed class MainForm : Form
                 currentGrade != previousGrade)
             {
                 previousMatrixRow.DividerHeight = 4;
+            }
+
+            if (!tastingSectionStarted &&
+                group.Key.Type == PersonType.Tasting &&
+                previousMatrixRow is not null)
+            {
+                previousMatrixRow.DividerHeight = 4;
+                tastingSectionStarted = true;
             }
 
             var values = new object[daysInMonth + 4];
@@ -1178,6 +1196,14 @@ public sealed class MainForm : Form
     {
         return person.ActiveFrom.Date <= date.Date &&
                (person.ActiveTo is null || person.ActiveTo.Value.Date >= date.Date);
+    }
+
+    private bool IsNoMealDate(DateTime date)
+    {
+        return date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday ||
+               !_data.People.Any(person =>
+                   IsActive(person, date) &&
+                   GetMealStatus(person, date) == MealStatus.Serve);
     }
 
     private static int DeliveryPlaceSortKey(string deliveryPlace)
