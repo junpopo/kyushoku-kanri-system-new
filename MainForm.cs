@@ -913,8 +913,93 @@ public sealed class MainForm : Form
             stoppedRow.Cells[day + 2].ToolTipText =
                 "クリックすると給食停止者を確認できます。";
         }
+        AddMonthlyNoMealReasonRow(month, daysInMonth);
 
         _monthlyMatrixGrid.ResumeLayout();
+    }
+
+    private void AddMonthlyNoMealReasonRow(DateTime month, int daysInMonth)
+    {
+        var values = new object[daysInMonth + 4];
+        values[2] = "給食なし理由";
+        for (var day = 1; day <= daysInMonth; day++)
+        {
+            var date = new DateTime(month.Year, month.Month, day);
+            values[day + 2] = VerticalMonthlyReason(MonthlyNoMealReason(date));
+        }
+
+        var row = _monthlyMatrixGrid.Rows[
+            _monthlyMatrixGrid.Rows.Add(values)];
+        row.Height = 190;
+        row.DividerHeight = 3;
+        row.Cells[2].Style.Font = new Font(
+            _monthlyMatrixGrid.Font,
+            FontStyle.Bold);
+        row.Cells[2].Style.ForeColor = Color.Firebrick;
+        row.Cells[2].Style.Alignment =
+            DataGridViewContentAlignment.TopLeft;
+
+        for (var day = 1; day <= daysInMonth; day++)
+        {
+            var date = new DateTime(month.Year, month.Month, day);
+            var reason = MonthlyNoMealReason(date);
+            var cell = row.Cells[day + 2];
+            cell.Style.ForeColor = Color.Firebrick;
+            cell.Style.Font = new Font(
+                _monthlyMatrixGrid.Font.FontFamily,
+                8,
+                FontStyle.Bold);
+            cell.Style.Alignment = DataGridViewContentAlignment.TopCenter;
+            cell.Style.WrapMode = DataGridViewTriState.True;
+            cell.Style.BackColor =
+                date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday
+                    ? Color.FromArgb(235, 235, 235)
+                    : Color.FromArgb(255, 248, 248);
+            if (reason.Length > 0)
+            {
+                cell.ToolTipText = $"{date:yyyy年M月d日}　理由: {reason}";
+            }
+        }
+    }
+
+    private string MonthlyNoMealReason(DateTime date)
+    {
+        if (date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
+        {
+            return "";
+        }
+
+        var noMealDate = FindNoMealDate(date);
+        if (noMealDate is not null)
+        {
+            return noMealDate.Name;
+        }
+
+        return string.Join(
+            "・",
+            _data.People
+                .Where(person =>
+                    IsActive(person, date) &&
+                    GetMealStatus(person, date) == MealStatus.Stop)
+                .Select(person => GetMealStatusReason(person, date))
+                .Where(reason =>
+                    !string.IsNullOrWhiteSpace(reason) &&
+                    reason != "喫食日ではありません")
+                .Distinct(StringComparer.CurrentCultureIgnoreCase)
+                .OrderBy(reason => reason));
+    }
+
+    private static string VerticalMonthlyReason(string reason)
+    {
+        var simplified = reason
+            .Replace("（", "", StringComparison.Ordinal)
+            .Replace("）", "", StringComparison.Ordinal)
+            .Replace("(", "", StringComparison.Ordinal)
+            .Replace(")", "", StringComparison.Ordinal)
+            .Trim();
+        return simplified.Length == 0
+            ? ""
+            : string.Join("\n", simplified.ToCharArray());
     }
 
     private void AddMonthlyMatrixSectionHeader(string label, int daysInMonth)

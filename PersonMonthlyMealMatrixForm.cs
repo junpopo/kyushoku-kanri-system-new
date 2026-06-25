@@ -7,8 +7,6 @@ public sealed class PersonMonthlyMealMatrixForm : Form
     private readonly Func<DateTime, MealStatus> _mealStatusProvider;
     private readonly Func<DateTime, string> _mealReasonProvider;
     private readonly DataGridView _grid = new();
-    private readonly TableLayoutPanel _reasonPanel = new();
-    private readonly ToolTip _reasonToolTip = new();
     private readonly Label _reasonLabel = new();
 
     public PersonMonthlyMealMatrixForm(
@@ -39,13 +37,12 @@ public sealed class PersonMonthlyMealMatrixForm : Form
         {
             Dock = DockStyle.Fill,
             ColumnCount = 1,
-            RowCount = 6,
+            RowCount = 5,
             Padding = new Padding(12)
         };
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 195));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
@@ -65,7 +62,6 @@ public sealed class PersonMonthlyMealMatrixForm : Form
         };
 
         ConfigureGrid();
-        ConfigureReasonPanel();
         _reasonLabel.Text = "停止・欠席のセルをクリックすると理由を表示します。";
         _reasonLabel.AutoSize = true;
         _reasonLabel.ForeColor = Color.FromArgb(75, 65, 45);
@@ -92,9 +88,8 @@ public sealed class PersonMonthlyMealMatrixForm : Form
         root.Controls.Add(title, 0, 0);
         root.Controls.Add(legend, 0, 1);
         root.Controls.Add(_grid, 0, 2);
-        root.Controls.Add(_reasonPanel, 0, 3);
-        root.Controls.Add(_reasonLabel, 0, 4);
-        root.Controls.Add(closePanel, 0, 5);
+        root.Controls.Add(_reasonLabel, 0, 3);
+        root.Controls.Add(closePanel, 0, 4);
         return root;
     }
 
@@ -118,21 +113,10 @@ public sealed class PersonMonthlyMealMatrixForm : Form
             eventArgs.ColumnIndex);
     }
 
-    private void ConfigureReasonPanel()
-    {
-        _reasonPanel.Dock = DockStyle.Top;
-        _reasonPanel.Height = 190;
-        _reasonPanel.RowCount = 1;
-        _reasonPanel.Margin = new Padding(0, 4, 0, 0);
-        _reasonPanel.BackColor = Color.FromArgb(255, 248, 248);
-    }
-
     private void BuildMatrix()
     {
         _grid.Columns.Clear();
         _grid.Rows.Clear();
-        _reasonPanel.Controls.Clear();
-        _reasonPanel.ColumnStyles.Clear();
 
         _grid.Columns.Add(new DataGridViewTextBoxColumn
         {
@@ -142,17 +126,6 @@ public sealed class PersonMonthlyMealMatrixForm : Form
         });
 
         var daysInMonth = DateTime.DaysInMonth(_month.Year, _month.Month);
-        _reasonPanel.ColumnCount = daysInMonth + 1;
-        _reasonPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 70));
-        _reasonPanel.Controls.Add(new Label
-        {
-            Text = "理由",
-            Dock = DockStyle.Fill,
-            TextAlign = ContentAlignment.TopCenter,
-            Font = new Font(_grid.Font, FontStyle.Bold),
-            Padding = new Padding(0, 6, 0, 0)
-        }, 0, 0);
-
         for (var day = 1; day <= daysInMonth; day++)
         {
             var date = new DateTime(_month.Year, _month.Month, day);
@@ -162,31 +135,35 @@ public sealed class PersonMonthlyMealMatrixForm : Form
                 Width = 35,
                 SortMode = DataGridViewColumnSortMode.NotSortable
             });
-            _reasonPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 35));
-            var reasonLabel = CreateVerticalReasonLabel(date);
-            _reasonPanel.Controls.Add(reasonLabel, day, 0);
         }
 
         var mealValues = new object[daysInMonth + 1];
         var milkValues = new object[daysInMonth + 1];
+        var reasonValues = new object[daysInMonth + 1];
         mealValues[0] = "給食";
         milkValues[0] = "牛乳";
+        reasonValues[0] = "理由";
         for (var day = 1; day <= daysInMonth; day++)
         {
             var date = new DateTime(_month.Year, _month.Month, day);
             mealValues[day] = MealStatusLabel(date);
             milkValues[day] = MilkStatusLabel(date);
+            reasonValues[day] = VerticalReason(date);
         }
 
         var mealRow = _grid.Rows[_grid.Rows.Add(mealValues)];
         var milkRow = _grid.Rows[_grid.Rows.Add(milkValues)];
+        var reasonRow = _grid.Rows[_grid.Rows.Add(reasonValues)];
         mealRow.Cells[0].Style.Font = new Font(_grid.Font, FontStyle.Bold);
         milkRow.Cells[0].Style.Font = new Font(_grid.Font, FontStyle.Bold);
+        reasonRow.Cells[0].Style.Font = new Font(_grid.Font, FontStyle.Bold);
+        reasonRow.Height = 190;
         for (var day = 1; day <= daysInMonth; day++)
         {
             var date = new DateTime(_month.Year, _month.Month, day);
             StyleStatusCell(mealRow.Cells[day], date, "給食");
             StyleStatusCell(milkRow.Cells[day], date, "牛乳");
+            StyleReasonCell(reasonRow.Cells[day], date);
         }
     }
 
@@ -263,9 +240,24 @@ public sealed class PersonMonthlyMealMatrixForm : Form
         }
 
         var date = new DateTime(_month.Year, _month.Month, columnIndex);
-        var item = rowIndex == 0 ? "給食" : "牛乳";
+        var item = rowIndex switch
+        {
+            0 => "給食",
+            1 => "牛乳",
+            _ => "理由"
+        };
         var label = Convert.ToString(_grid.Rows[rowIndex].Cells[columnIndex].Value) ?? "";
-        var reason = StatusReason(date, label);
+        var reason = rowIndex == 2
+            ? _mealReasonProvider(date)
+            : StatusReason(date, label);
+        if (rowIndex == 2)
+        {
+            _reasonLabel.Text = reason.Length > 0
+                ? $"{date:yyyy年M月d日}　理由: {reason}"
+                : $"{date:yyyy年M月d日}　理由なし";
+            return;
+        }
+
         _reasonLabel.Text = reason.Length > 0
             ? $"{date:yyyy年M月d日}　{item}: {FullStatusLabel(label, item)}　理由: {reason}"
             : $"{date:yyyy年M月d日}　{item}: {FullStatusLabel(label, item)}";
@@ -296,32 +288,21 @@ public sealed class PersonMonthlyMealMatrixForm : Form
             : string.Join("\n", verticalReason.ToCharArray());
     }
 
-    private Label CreateVerticalReasonLabel(DateTime date)
+    private void StyleReasonCell(DataGridViewCell cell, DateTime date)
     {
-        var text = VerticalReason(date);
-        var reason = text.Length > 0 ? _mealReasonProvider(date).Trim() : "";
-        var label = new Label
-        {
-            Text = text,
-            Dock = DockStyle.Fill,
-            TextAlign = ContentAlignment.TopCenter,
-            Font = new Font(_grid.Font.FontFamily, 8, FontStyle.Bold),
-            ForeColor = Color.Firebrick,
-            BackColor = date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday
-                ? Color.FromArgb(235, 235, 235)
-                : Color.FromArgb(255, 248, 248),
-            Margin = Padding.Empty,
-            Padding = new Padding(0, 4, 0, 0),
-            Cursor = reason.Length > 0 ? Cursors.Hand : Cursors.Default
-        };
+        var hasReasonDisplay = Convert.ToString(cell.Value)?.Length > 0;
+        var reason = hasReasonDisplay ? _mealReasonProvider(date).Trim() : "";
+        cell.Style.ForeColor = Color.Firebrick;
+        cell.Style.Font = new Font(_grid.Font.FontFamily, 8, FontStyle.Bold);
+        cell.Style.Alignment = DataGridViewContentAlignment.TopCenter;
+        cell.Style.WrapMode = DataGridViewTriState.True;
+        cell.Style.BackColor = date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday
+            ? Color.FromArgb(235, 235, 235)
+            : Color.FromArgb(255, 248, 248);
         if (reason.Length > 0)
         {
-            _reasonToolTip.SetToolTip(label, $"{date:yyyy年M月d日}　理由: {reason}");
-            label.Click += (_, _) =>
-                _reasonLabel.Text = $"{date:yyyy年M月d日}　理由: {reason}";
+            cell.ToolTipText = $"{date:yyyy年M月d日}　理由: {reason}";
         }
-
-        return label;
     }
 
     private string StatusReason(DateTime date, string label)
