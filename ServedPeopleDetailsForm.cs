@@ -9,9 +9,9 @@ public sealed class ServedPeopleDetailsForm : Form
         IReadOnlyCollection<MealRecord> mealRecords)
     {
         Text = "喫食者の詳細";
-        Width = 720;
+        Width = 900;
         Height = 480;
-        MinimumSize = new Size(620, 360);
+        MinimumSize = new Size(780, 360);
         StartPosition = FormStartPosition.CenterParent;
 
         var root = new TableLayoutPanel
@@ -37,6 +37,9 @@ public sealed class ServedPeopleDetailsForm : Form
         {
             Person = person,
             Type = person.TypeLabel,
+            Grade = person.Grade,
+            ClassName = person.ClassName,
+            StudentNumber = person.StudentNumber,
             Name = person.FullName,
             DeliveryPlace = person.GetDeliveryPlace(date),
             Milk = person.HasMilk ? "あり" : "なし",
@@ -58,6 +61,9 @@ public sealed class ServedPeopleDetailsForm : Form
         grid.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
         grid.MultiSelect = false;
         grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "区分", DataPropertyName = nameof(ServedPersonRow.Type), FillWeight = 70 });
+        grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "学年", DataPropertyName = nameof(ServedPersonRow.Grade), FillWeight = 42 });
+        grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "組", DataPropertyName = nameof(ServedPersonRow.ClassName), FillWeight = 42 });
+        grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "番号", DataPropertyName = nameof(ServedPersonRow.StudentNumber), FillWeight = 50 });
         grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "氏名", DataPropertyName = nameof(ServedPersonRow.Name), FillWeight = 120 });
         grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "配膳場所", DataPropertyName = nameof(ServedPersonRow.DeliveryPlace), FillWeight = 95 });
         grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "牛乳", DataPropertyName = nameof(ServedPersonRow.Milk), FillWeight = 45 });
@@ -106,6 +112,9 @@ public sealed class ServedPeopleDetailsForm : Form
     {
         public required Person Person { get; init; }
         public string Type { get; init; } = "";
+        public string Grade { get; init; } = "";
+        public string ClassName { get; init; } = "";
+        public string StudentNumber { get; init; } = "";
         public string Name { get; init; } = "";
         public string DeliveryPlace { get; init; } = "";
         public string Milk { get; init; } = "";
