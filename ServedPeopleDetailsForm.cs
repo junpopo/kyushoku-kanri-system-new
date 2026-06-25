@@ -6,7 +6,8 @@ public sealed class ServedPeopleDetailsForm : Form
         DateTime date,
         string deliveryPlace,
         IReadOnlyCollection<Person> people,
-        Func<Person, DateTime, MealStatus> mealStatusProvider)
+        Func<Person, DateTime, MealStatus> mealStatusProvider,
+        Func<Person, DateTime, string> mealReasonProvider)
     {
         Text = "喫食者の詳細";
         Width = 900;
@@ -81,7 +82,8 @@ public sealed class ServedPeopleDetailsForm : Form
             var dialog = new PersonMonthlyMealMatrixForm(
                 new DateTime(date.Year, date.Month, 1),
                 selected.Person,
-                targetDate => mealStatusProvider(selected.Person, targetDate));
+                targetDate => mealStatusProvider(selected.Person, targetDate),
+                targetDate => mealReasonProvider(selected.Person, targetDate));
             dialog.Show(this);
         };
 

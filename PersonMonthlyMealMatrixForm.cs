@@ -5,16 +5,20 @@ public sealed class PersonMonthlyMealMatrixForm : Form
     private readonly DateTime _month;
     private readonly Person _person;
     private readonly Func<DateTime, MealStatus> _mealStatusProvider;
+    private readonly Func<DateTime, string> _mealReasonProvider;
     private readonly DataGridView _grid = new();
+    private readonly Label _reasonLabel = new();
 
     public PersonMonthlyMealMatrixForm(
         DateTime month,
         Person person,
-        Func<DateTime, MealStatus> mealStatusProvider)
+        Func<DateTime, MealStatus> mealStatusProvider,
+        Func<DateTime, string> mealReasonProvider)
     {
         _month = new DateTime(month.Year, month.Month, 1);
         _person = person;
         _mealStatusProvider = mealStatusProvider;
+        _mealReasonProvider = mealReasonProvider;
 
         Text = "月間喫食状況";
         Width = 1320;
@@ -33,12 +37,13 @@ public sealed class PersonMonthlyMealMatrixForm : Form
         {
             Dock = DockStyle.Fill,
             ColumnCount = 1,
-            RowCount = 4,
+            RowCount = 5,
             Padding = new Padding(12)
         };
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
         var title = new Label
@@ -57,6 +62,10 @@ public sealed class PersonMonthlyMealMatrixForm : Form
         };
 
         ConfigureGrid();
+        _reasonLabel.Text = "停止・欠席のセルをクリックすると理由を表示します。";
+        _reasonLabel.AutoSize = true;
+        _reasonLabel.ForeColor = Color.FromArgb(75, 65, 45);
+        _reasonLabel.Padding = new Padding(4, 8, 4, 4);
 
         var closePanel = new FlowLayoutPanel
         {
@@ -79,7 +88,8 @@ public sealed class PersonMonthlyMealMatrixForm : Form
         root.Controls.Add(title, 0, 0);
         root.Controls.Add(legend, 0, 1);
         root.Controls.Add(_grid, 0, 2);
-        root.Controls.Add(closePanel, 0, 3);
+        root.Controls.Add(_reasonLabel, 0, 3);
+        root.Controls.Add(closePanel, 0, 4);
         return root;
     }
 
@@ -98,6 +108,9 @@ public sealed class PersonMonthlyMealMatrixForm : Form
         _grid.RowTemplate.Height = 38;
         _grid.BackgroundColor = Color.White;
         _grid.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+        _grid.CellClick += (_, eventArgs) => ShowCellReason(
+            eventArgs.RowIndex,
+            eventArgs.ColumnIndex);
     }
 
     private void BuildMatrix()
@@ -178,7 +191,9 @@ public sealed class PersonMonthlyMealMatrixForm : Form
     private void StyleStatusCell(DataGridViewCell cell, DateTime date, string item)
     {
         var label = Convert.ToString(cell.Value) ?? "";
-        cell.ToolTipText = $"{date:yyyy年M月d日} {item}: {FullStatusLabel(label, item)}";
+        var reason = StatusReason(date, label);
+        cell.ToolTipText = $"{date:yyyy年M月d日} {item}: {FullStatusLabel(label, item)}" +
+                           (reason.Length > 0 ? $"　理由: {reason}" : "");
         switch (label)
         {
             case "○":
@@ -208,6 +223,29 @@ public sealed class PersonMonthlyMealMatrixForm : Form
                 cell.Style.ForeColor = Color.Gray;
                 break;
         }
+    }
+
+    private void ShowCellReason(int rowIndex, int columnIndex)
+    {
+        if (rowIndex < 0 || columnIndex <= 0)
+        {
+            return;
+        }
+
+        var date = new DateTime(_month.Year, _month.Month, columnIndex);
+        var item = rowIndex == 0 ? "給食" : "牛乳";
+        var label = Convert.ToString(_grid.Rows[rowIndex].Cells[columnIndex].Value) ?? "";
+        var reason = StatusReason(date, label);
+        _reasonLabel.Text = reason.Length > 0
+            ? $"{date:yyyy年M月d日}　{item}: {FullStatusLabel(label, item)}　理由: {reason}"
+            : $"{date:yyyy年M月d日}　{item}: {FullStatusLabel(label, item)}";
+    }
+
+    private string StatusReason(DateTime date, string label)
+    {
+        return label is "✕" or "欠"
+            ? _mealReasonProvider(date)
+            : "";
     }
 
     private bool IsActive(DateTime date)

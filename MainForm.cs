@@ -1014,7 +1014,8 @@ public sealed class MainForm : Form
             date,
             $"{deliveryPlace} / {typeLabel}",
             people,
-            GetMealStatus);
+            GetMealStatus,
+            GetMealStatusReason);
         dialog.ShowDialog(this);
     }
 
@@ -1035,7 +1036,8 @@ public sealed class MainForm : Form
             date,
             "アレルギー対応",
             people,
-            GetMealStatus);
+            GetMealStatus,
+            GetMealStatusReason);
         dialog.ShowDialog(this);
     }
 
@@ -1058,7 +1060,8 @@ public sealed class MainForm : Form
             date,
             "牛乳停止",
             people,
-            GetMealStatus);
+            GetMealStatus,
+            GetMealStatusReason);
         dialog.ShowDialog(this);
     }
 
@@ -1669,7 +1672,8 @@ public sealed class MainForm : Form
         var dialog = new IndividualAnnualMealCountForm(
             _registeredFiscalYear,
             _data.People,
-            GetMealStatus);
+            GetMealStatus,
+            GetMealStatusReason);
         dialog.Show(this);
     }
 

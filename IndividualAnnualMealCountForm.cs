@@ -7,6 +7,7 @@ public sealed class IndividualAnnualMealCountForm : Form
     private readonly int _fiscalYear;
     private readonly IReadOnlyCollection<Person> _people;
     private readonly Func<Person, DateTime, MealStatus> _mealStatusProvider;
+    private readonly Func<Person, DateTime, string> _mealReasonProvider;
     private readonly BindingList<PersonAnnualMealRow> _rows = [];
     private readonly DataGridView _grid = new();
     private readonly ComboBox _typeFilter = new();
@@ -20,11 +21,13 @@ public sealed class IndividualAnnualMealCountForm : Form
     public IndividualAnnualMealCountForm(
         int fiscalYear,
         IReadOnlyCollection<Person> people,
-        Func<Person, DateTime, MealStatus> mealStatusProvider)
+        Func<Person, DateTime, MealStatus> mealStatusProvider,
+        Func<Person, DateTime, string> mealReasonProvider)
     {
         _fiscalYear = fiscalYear;
         _people = people;
         _mealStatusProvider = mealStatusProvider;
+        _mealReasonProvider = mealReasonProvider;
 
         Text = "個人別年間喫食数";
         Width = 1420;
@@ -333,7 +336,8 @@ public sealed class IndividualAnnualMealCountForm : Form
         var dialog = new PersonMonthlyMealMatrixForm(
             month,
             row.Person,
-            date => _mealStatusProvider(row.Person, date));
+            date => _mealStatusProvider(row.Person, date),
+            date => _mealReasonProvider(row.Person, date));
         dialog.Show(this);
     }
 
