@@ -740,8 +740,18 @@ public sealed class MainForm : Form
             .ThenBy(group => (int)group.Key.Type)
             .ToList();
 
+        int? previousGrade = null;
+        DataGridViewRow? previousMatrixRow = null;
         foreach (var group in groups)
         {
+            var currentGrade = SchoolGrade(group.Key.DeliveryPlace);
+            if (previousMatrixRow is not null &&
+                previousGrade is not null &&
+                currentGrade != previousGrade)
+            {
+                previousMatrixRow.DividerHeight = 4;
+            }
+
             var values = new object[daysInMonth + 4];
             var people = group
                 .Select(item => item.Person)
@@ -790,6 +800,14 @@ public sealed class MainForm : Form
                         "ダブルクリックすると喫食者を確認できます。";
                 }
             }
+
+            previousGrade = currentGrade;
+            previousMatrixRow = matrixRow;
+        }
+
+        if (previousMatrixRow is not null && previousGrade is not null)
+        {
+            previousMatrixRow.DividerHeight = 4;
         }
 
         AddMonthlyMatrixSectionHeader("日別合計", daysInMonth);
@@ -1175,6 +1193,16 @@ public sealed class MainForm : Form
         return match.Success
             ? int.Parse(match.Groups["grade"].Value) * 100 + int.Parse(match.Groups["class"].Value)
             : 10000;
+    }
+
+    private static int? SchoolGrade(string deliveryPlace)
+    {
+        var match = System.Text.RegularExpressions.Regex.Match(
+            deliveryPlace,
+            @"(?<grade>\d+)年(?<class>\d+)組");
+        return match.Success
+            ? int.Parse(match.Groups["grade"].Value)
+            : null;
     }
 
     private void BuildMonthlyCalendar(DateTime month)
