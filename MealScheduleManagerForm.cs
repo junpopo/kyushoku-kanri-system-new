@@ -27,9 +27,9 @@ public sealed class MealScheduleManagerForm : Form
         Changes = changes.Select(Clone).ToList();
 
         Text = "給食開始・停止・再開管理";
-        Width = 1100;
+        Width = 1200;
         Height = 560;
-        MinimumSize = new Size(900, 460);
+        MinimumSize = new Size(1080, 460);
         StartPosition = FormStartPosition.CenterParent;
         ControlBox = false;
 
@@ -104,15 +104,36 @@ public sealed class MealScheduleManagerForm : Form
         _grid.RowHeadersVisible = false;
         _grid.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
         _grid.MultiSelect = false;
-        _grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
-        _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "開始日", DataPropertyName = nameof(ScheduleRow.StartDate), FillWeight = 75 });
-        _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "終了日", DataPropertyName = nameof(ScheduleRow.EndDate), FillWeight = 75 });
-        _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "対象", DataPropertyName = nameof(ScheduleRow.Scope), FillWeight = 65 });
-        _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "学年・組・番号・個人", DataPropertyName = nameof(ScheduleRow.Target), FillWeight = 175 });
-        _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "変更", DataPropertyName = nameof(ScheduleRow.Action), FillWeight = 70 });
-        _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "理由", DataPropertyName = nameof(ScheduleRow.Reason), FillWeight = 180 });
+        _grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
+        _grid.ScrollBars = ScrollBars.Vertical;
+        _grid.Columns.Add(CreateGridColumn("開始日", nameof(ScheduleRow.StartDate), 90));
+        _grid.Columns.Add(CreateGridColumn("終了日", nameof(ScheduleRow.EndDate), 90));
+        _grid.Columns.Add(CreateGridColumn("対象", nameof(ScheduleRow.Scope), 65));
+        _grid.Columns.Add(CreateGridColumn("学年・組・番号・個人", nameof(ScheduleRow.Target), 310));
+        _grid.Columns.Add(CreateGridColumn("変更", nameof(ScheduleRow.Action), 65));
+        _grid.Columns.Add(new DataGridViewTextBoxColumn
+        {
+            HeaderText = "理由",
+            DataPropertyName = nameof(ScheduleRow.Reason),
+            AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
+            MinimumWidth = 220
+        });
         _grid.DataSource = _rows;
         _grid.SelectionChanged += (_, _) => LoadSelected();
+    }
+
+    private static DataGridViewTextBoxColumn CreateGridColumn(
+        string headerText,
+        string propertyName,
+        int width)
+    {
+        return new DataGridViewTextBoxColumn
+        {
+            HeaderText = headerText,
+            DataPropertyName = propertyName,
+            Width = width,
+            SortMode = DataGridViewColumnSortMode.Automatic
+        };
     }
 
     private Control CreateEditArea()
