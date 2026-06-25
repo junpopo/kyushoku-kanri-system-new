@@ -22,8 +22,8 @@ public sealed class PersonMonthlyMealMatrixForm : Form
 
         Text = "月間喫食状況";
         Width = 1320;
-        Height = 350;
-        MinimumSize = new Size(1000, 320);
+        Height = 560;
+        MinimumSize = new Size(1000, 500);
         StartPosition = FormStartPosition.CenterParent;
         ControlBox = false;
 
@@ -139,24 +139,31 @@ public sealed class PersonMonthlyMealMatrixForm : Form
 
         var mealValues = new object[daysInMonth + 1];
         var milkValues = new object[daysInMonth + 1];
+        var reasonValues = new object[daysInMonth + 1];
         mealValues[0] = "給食";
         milkValues[0] = "牛乳";
+        reasonValues[0] = "理由";
         for (var day = 1; day <= daysInMonth; day++)
         {
             var date = new DateTime(_month.Year, _month.Month, day);
             mealValues[day] = MealStatusLabel(date);
             milkValues[day] = MilkStatusLabel(date);
+            reasonValues[day] = VerticalReason(date);
         }
 
         var mealRow = _grid.Rows[_grid.Rows.Add(mealValues)];
         var milkRow = _grid.Rows[_grid.Rows.Add(milkValues)];
+        var reasonRow = _grid.Rows[_grid.Rows.Add(reasonValues)];
         mealRow.Cells[0].Style.Font = new Font(_grid.Font, FontStyle.Bold);
         milkRow.Cells[0].Style.Font = new Font(_grid.Font, FontStyle.Bold);
+        reasonRow.Cells[0].Style.Font = new Font(_grid.Font, FontStyle.Bold);
+        reasonRow.Height = 190;
         for (var day = 1; day <= daysInMonth; day++)
         {
             var date = new DateTime(_month.Year, _month.Month, day);
             StyleStatusCell(mealRow.Cells[day], date, "給食");
             StyleStatusCell(milkRow.Cells[day], date, "牛乳");
+            StyleReasonCell(reasonRow.Cells[day], date);
         }
     }
 
@@ -233,12 +240,62 @@ public sealed class PersonMonthlyMealMatrixForm : Form
         }
 
         var date = new DateTime(_month.Year, _month.Month, columnIndex);
-        var item = rowIndex == 0 ? "給食" : "牛乳";
+        var item = rowIndex switch
+        {
+            0 => "給食",
+            1 => "牛乳",
+            _ => "理由"
+        };
         var label = Convert.ToString(_grid.Rows[rowIndex].Cells[columnIndex].Value) ?? "";
-        var reason = StatusReason(date, label);
+        var reason = rowIndex == 2
+            ? _mealReasonProvider(date)
+            : StatusReason(date, label);
+        if (rowIndex == 2)
+        {
+            _reasonLabel.Text = reason.Length > 0
+                ? $"{date:yyyy年M月d日}　理由: {reason}"
+                : $"{date:yyyy年M月d日}　理由なし";
+            return;
+        }
+
         _reasonLabel.Text = reason.Length > 0
             ? $"{date:yyyy年M月d日}　{item}: {FullStatusLabel(label, item)}　理由: {reason}"
             : $"{date:yyyy年M月d日}　{item}: {FullStatusLabel(label, item)}";
+    }
+
+    private string VerticalReason(DateTime date)
+    {
+        if (!IsActive(date))
+        {
+            return "";
+        }
+
+        var status = _mealStatusProvider(date);
+        if (status is not (MealStatus.Stop or MealStatus.Absent) ||
+            date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
+        {
+            return "";
+        }
+
+        var reason = _mealReasonProvider(date).Trim();
+        return reason.Length == 0 ? "" : string.Join("\n", reason.ToCharArray());
+    }
+
+    private void StyleReasonCell(DataGridViewCell cell, DateTime date)
+    {
+        var hasReasonDisplay = Convert.ToString(cell.Value)?.Length > 0;
+        var reason = hasReasonDisplay ? _mealReasonProvider(date).Trim() : "";
+        cell.Style.ForeColor = Color.Firebrick;
+        cell.Style.Font = new Font(_grid.Font.FontFamily, 8, FontStyle.Bold);
+        cell.Style.Alignment = DataGridViewContentAlignment.TopCenter;
+        cell.Style.WrapMode = DataGridViewTriState.True;
+        cell.Style.BackColor = date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday
+            ? Color.FromArgb(235, 235, 235)
+            : Color.FromArgb(255, 248, 248);
+        if (reason.Length > 0)
+        {
+            cell.ToolTipText = $"{date:yyyy年M月d日}　理由: {reason}";
+        }
     }
 
     private string StatusReason(DateTime date, string label)
