@@ -190,6 +190,7 @@ public sealed class MainForm : Form
         top.Controls.Add(_mealMonthInput);
         top.Controls.Add(new Label { Text = "月", AutoSize = true, Padding = new Padding(2, 8, 4, 0) });
         top.Controls.Add(CreateButton("更新", RefreshMonthly));
+        top.Controls.Add(CreateButton("内閣府の祝日を取り込む", ImportCabinetOfficeHolidays, requiresAdmin: true));
 
         _monthlyTotalLabel.AutoSize = true;
         _monthlyTotalLabel.Padding = new Padding(4, 8, 0, 0);
@@ -733,6 +734,11 @@ public sealed class MainForm : Form
                 column.HeaderCell.Style.Font = new Font(
                     _monthlyMatrixGrid.Font,
                     FontStyle.Bold);
+                var noMealDate = FindNoMealDate(date);
+                if (noMealDate is not null)
+                {
+                    column.HeaderCell.ToolTipText = $"給食なし: {noMealDate.Name}";
+                }
             }
 
             _monthlyMatrixGrid.Columns.Add(column);
@@ -1223,9 +1229,15 @@ public sealed class MainForm : Form
     private bool IsNoMealDate(DateTime date)
     {
         return date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday ||
+               FindNoMealDate(date) is not null ||
                !_data.People.Any(person =>
                    IsActive(person, date) &&
                    GetMealStatus(person, date) == MealStatus.Serve);
+    }
+
+    private NoMealDate? FindNoMealDate(DateTime date)
+    {
+        return _data.NoMealDates.FirstOrDefault(item => item.Date.Date == date.Date);
     }
 
     private static int DeliveryPlaceSortKey(string deliveryPlace)
@@ -1409,6 +1421,11 @@ public sealed class MainForm : Form
 
     private MealStatus GetMealStatus(Person person, DateTime date)
     {
+        if (FindNoMealDate(date) is not null)
+        {
+            return MealStatus.Stop;
+        }
+
         var record = _data.MealRecords.FirstOrDefault(item =>
             item.PersonId == person.Id && item.Date.Date == date.Date);
         if (record is not null)
@@ -1432,6 +1449,12 @@ public sealed class MainForm : Form
 
     private string GetMealStatusReason(Person person, DateTime date)
     {
+        var noMealDate = FindNoMealDate(date);
+        if (noMealDate is not null)
+        {
+            return $"給食なし（{noMealDate.Name}）";
+        }
+
         var record = _data.MealRecords.FirstOrDefault(item =>
             item.PersonId == person.Id && item.Date.Date == date.Date);
         if (record is not null)
@@ -1726,6 +1749,58 @@ public sealed class MainForm : Form
         RefreshDaily();
         RefreshMonthly();
         RefreshSummary();
+    }
+
+    private async void ImportCabinetOfficeHolidays()
+    {
+        try
+        {
+            Cursor = Cursors.WaitCursor;
+            var holidays = await CabinetOfficeHolidayImporter.DownloadAsync(
+                _registeredFiscalYear);
+            if (holidays.Count == 0)
+            {
+                MessageBox.Show(
+                    $"{_registeredFiscalYear}年度の祝日が見つかりませんでした。",
+                    "祝日取り込み",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                return;
+            }
+
+            var fiscalStart = new DateTime(_registeredFiscalYear, 4, 1);
+            var fiscalEnd = new DateTime(_registeredFiscalYear + 1, 3, 31);
+            _data.NoMealDates.RemoveAll(item =>
+                item.Source == CabinetOfficeHolidayImporter.SourceName &&
+                item.Date.Date >= fiscalStart &&
+                item.Date.Date <= fiscalEnd);
+            _data.NoMealDates.AddRange(holidays);
+            _data.NoMealDates = _data.NoMealDates
+                .OrderBy(item => item.Date)
+                .ToList();
+            _repository.Save(_data);
+            RefreshDaily();
+            RefreshMonthly();
+            RefreshSummary();
+
+            MessageBox.Show(
+                $"{_registeredFiscalYear}年度の祝日を{holidays.Count}日取り込み、給食なし日に設定しました。",
+                "祝日取り込み",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+        }
+        catch (Exception exception)
+        {
+            MessageBox.Show(
+                $"内閣府の祝日を取り込めませんでした。\n\n{exception.Message}",
+                "祝日取り込み",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error);
+        }
+        finally
+        {
+            Cursor = Cursors.Default;
+        }
     }
 
     private void DeleteSelectedPerson()

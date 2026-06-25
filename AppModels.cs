@@ -145,6 +145,13 @@ public sealed class MealScheduleChange
     public string Reason { get; set; } = "";
 }
 
+public sealed class NoMealDate
+{
+    public DateTime Date { get; set; }
+    public string Name { get; set; } = "";
+    public string Source { get; set; } = "";
+}
+
 public sealed class DeliveryPlaceBasicCount
 {
     public int FiscalYear { get; set; }
@@ -173,6 +180,7 @@ public sealed class AppData
     public List<Person> People { get; set; } = [];
     public List<MealRecord> MealRecords { get; set; } = [];
     public List<MealScheduleChange> MealScheduleChanges { get; set; } = [];
+    public List<NoMealDate> NoMealDates { get; set; } = [];
     public List<string> DeliveryPlaces { get; set; } = [];
     public List<DeliveryPlaceBasicCount> DeliveryPlaceBasicCounts { get; set; } = [];
 }
