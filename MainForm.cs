@@ -508,13 +508,20 @@ public sealed class MainForm : Form
         {
             if (eventArgs.RowIndex < 0 ||
                 eventArgs.ColumnIndex < 3 ||
-                _monthlyMatrixGrid.Columns[eventArgs.ColumnIndex].Tag is not DateTime date ||
-                _monthlyMatrixGrid.Rows[eventArgs.RowIndex].Tag is not MonthlySummaryRowTag.MilkStopped)
+                _monthlyMatrixGrid.Columns[eventArgs.ColumnIndex].Tag is not DateTime date)
             {
                 return;
             }
 
-            ShowMilkStoppedPeopleDetails(date);
+            switch (_monthlyMatrixGrid.Rows[eventArgs.RowIndex].Tag)
+            {
+                case MonthlySummaryRowTag.MilkStopped:
+                    ShowMilkStoppedPeopleDetails(date);
+                    break;
+                case MonthlySummaryRowTag.MealStopped:
+                    ShowMealStoppedPeopleDetails(date);
+                    break;
+            }
         };
         _monthlyMatrixGrid.CellDoubleClick += (_, eventArgs) =>
         {
@@ -836,6 +843,15 @@ public sealed class MainForm : Form
         AddMonthlyMatrixSummaryRow("総合計", month, daysInMonth,
             date => CountServed(date, _data.People),
             Color.FromArgb(205, 225, 245));
+        var stoppedRow = AddMonthlyMatrixSummaryRow("給食停止者", month, daysInMonth,
+            CountMealStoppedPeople,
+            Color.FromArgb(255, 226, 205));
+        stoppedRow.Tag = MonthlySummaryRowTag.MealStopped;
+        for (var day = 1; day <= daysInMonth; day++)
+        {
+            stoppedRow.Cells[day + 2].ToolTipText =
+                "クリックすると給食停止者を確認できます。";
+        }
 
         _monthlyMatrixGrid.ResumeLayout();
     }
@@ -982,6 +998,60 @@ public sealed class MainForm : Form
             "牛乳停止",
             people,
             _data.MealRecords);
+        dialog.ShowDialog(this);
+    }
+
+    private int CountMealStoppedPeople(DateTime date)
+    {
+        if (date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
+        {
+            return 0;
+        }
+
+        return _data.People.Count(person =>
+            IsActive(person, date) &&
+            GetMealStatus(person, date) == MealStatus.Stop);
+    }
+
+    private void ShowMealStoppedPeopleDetails(DateTime date)
+    {
+        List<MealStatusDetail> details = date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday
+            ? []
+            : _data.People
+                .Where(person =>
+                    IsActive(person, date) &&
+                    GetMealStatus(person, date) == MealStatus.Stop)
+                .Select(person =>
+                {
+                    var record = _data.MealRecords.FirstOrDefault(item =>
+                        item.PersonId == person.Id && item.Date.Date == date.Date);
+                    return new MealStatusDetail
+                    {
+                        Type = person.TypeLabel,
+                        Grade = person.Grade,
+                        ClassName = person.ClassName,
+                        StudentNumber = person.StudentNumber,
+                        Name = person.FullName,
+                        DeliveryPlace = NormalizeDeliveryPlace(person.GetDeliveryPlace(date)),
+                        Status = "停止",
+                        Reason = record?.Reason ??
+                                 (!person.EatsOn(date.DayOfWeek) ? "喫食日ではありません" : "")
+                    };
+                })
+                .OrderBy(detail => DeliveryPlaceSortKey(detail.DeliveryPlace))
+                .ThenBy(detail => detail.DeliveryPlace)
+                .ThenBy(detail => detail.Type)
+                .ThenBy(detail => detail.Grade)
+                .ThenBy(detail => detail.ClassName)
+                .ThenBy(detail => ToNumber(detail.StudentNumber))
+                .ThenBy(detail => detail.Name)
+                .ToList();
+
+        using var dialog = new MealStatusDetailsForm(
+            date,
+            "全配膳場所",
+            details,
+            "給食停止者");
         dialog.ShowDialog(this);
     }
 
@@ -1236,6 +1306,7 @@ public sealed class MainForm : Form
                     ClassName = person.ClassName,
                     StudentNumber = person.StudentNumber,
                     Name = person.FullName,
+                    DeliveryPlace = NormalizeDeliveryPlace(person.GetDeliveryPlace(monthlyRow.DateValue)),
                     Status = StatusToLabel(status),
                     Reason = record?.Reason ??
                              (!person.EatsOn(monthlyRow.DateValue.DayOfWeek) ? "喫食日ではありません" : "")
@@ -1713,7 +1784,8 @@ public sealed class MainForm : Form
     private enum MonthlySummaryRowTag
     {
         Allergy,
-        MilkStopped
+        MilkStopped,
+        MealStopped
     }
 
     public sealed class MealStatusDetail
@@ -1723,6 +1795,7 @@ public sealed class MainForm : Form
         public string ClassName { get; init; } = "";
         public string StudentNumber { get; init; } = "";
         public string Name { get; init; } = "";
+        public string DeliveryPlace { get; init; } = "";
         public string Status { get; init; } = "";
         public string Reason { get; init; } = "";
     }

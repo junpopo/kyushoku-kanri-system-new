@@ -5,9 +5,10 @@ public sealed class MealStatusDetailsForm : Form
     public MealStatusDetailsForm(
         DateTime date,
         string deliveryPlace,
-        IReadOnlyCollection<MainForm.MealStatusDetail> details)
+        IReadOnlyCollection<MainForm.MealStatusDetail> details,
+        string detailLabel = "停止・欠席")
     {
-        Text = "停止・欠席の詳細";
+        Text = $"{detailLabel}の詳細";
         Width = 850;
         Height = 480;
         MinimumSize = new Size(700, 380);
@@ -26,7 +27,7 @@ public sealed class MealStatusDetailsForm : Form
 
         var title = new Label
         {
-            Text = $"{date:yyyy年M月d日}  {deliveryPlace}  停止・欠席: {details.Count}人",
+            Text = $"{date:yyyy年M月d日}  {deliveryPlace}  {detailLabel}: {details.Count}人",
             AutoSize = true,
             Font = new Font(Font, FontStyle.Bold),
             Margin = new Padding(0, 0, 0, 8)
@@ -48,6 +49,7 @@ public sealed class MealStatusDetailsForm : Form
         grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "組", DataPropertyName = nameof(MainForm.MealStatusDetail.ClassName), FillWeight = 45 });
         grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "番号", DataPropertyName = nameof(MainForm.MealStatusDetail.StudentNumber), FillWeight = 50 });
         grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "氏名", DataPropertyName = nameof(MainForm.MealStatusDetail.Name), FillWeight = 110 });
+        grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "配膳場所", DataPropertyName = nameof(MainForm.MealStatusDetail.DeliveryPlace), FillWeight = 95 });
         grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "状態", DataPropertyName = nameof(MainForm.MealStatusDetail.Status), FillWeight = 60 });
         grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "理由", DataPropertyName = nameof(MainForm.MealStatusDetail.Reason), FillWeight = 170 });
 
