@@ -27,9 +27,9 @@ public sealed class MealScheduleManagerForm : Form
         Changes = changes.Select(Clone).ToList();
 
         Text = "給食開始・停止・再開管理";
-        Width = 900;
+        Width = 1100;
         Height = 560;
-        MinimumSize = new Size(760, 460);
+        MinimumSize = new Size(900, 460);
         StartPosition = FormStartPosition.CenterParent;
         ControlBox = false;
 
