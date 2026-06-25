@@ -140,6 +140,13 @@ public sealed class DeliveryPlaceBasicCount
     public int March { get; set; }
 }
 
+public sealed class SchoolClass
+{
+    public int FiscalYear { get; set; }
+    public string Grade { get; set; } = "";
+    public string ClassName { get; set; } = "";
+}
+
 public sealed class AppData
 {
     public int RegisteredFiscalYear { get; set; }
@@ -148,4 +155,5 @@ public sealed class AppData
     public List<MealRecord> MealRecords { get; set; } = [];
     public List<string> DeliveryPlaces { get; set; } = [];
     public List<DeliveryPlaceBasicCount> DeliveryPlaceBasicCounts { get; set; } = [];
+    public List<SchoolClass> SchoolClasses { get; set; } = [];
 }
