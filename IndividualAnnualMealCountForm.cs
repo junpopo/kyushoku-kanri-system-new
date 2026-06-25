@@ -32,7 +32,7 @@ public sealed class IndividualAnnualMealCountForm : Form
         Text = "個人別年間喫食数";
         Width = 1420;
         Height = 700;
-        MinimumSize = new Size(1100, 520);
+        MinimumSize = new Size(1320, 520);
         StartPosition = FormStartPosition.CenterParent;
         ControlBox = false;
 
@@ -208,14 +208,16 @@ public sealed class IndividualAnnualMealCountForm : Form
         _grid.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
         _grid.MultiSelect = false;
         _grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
+        _grid.ScrollBars = ScrollBars.Vertical;
+        _grid.RowTemplate.Height = 36;
         _grid.DataSource = _rows;
 
-        AddTextColumn("区分", nameof(PersonAnnualMealRow.Type), 60, frozen: true);
-        AddTextColumn("学年", nameof(PersonAnnualMealRow.Grade), 42, frozen: true);
-        AddTextColumn("組", nameof(PersonAnnualMealRow.ClassName), 38, frozen: true);
-        AddTextColumn("番号", nameof(PersonAnnualMealRow.StudentNumber), 48, frozen: true);
-        AddTextColumn("氏名", nameof(PersonAnnualMealRow.Name), 115, frozen: true);
-        AddTextColumn("現在の配膳場所", nameof(PersonAnnualMealRow.DeliveryPlace), 105, frozen: true);
+        AddTextColumn("区分", nameof(PersonAnnualMealRow.Type), 58, frozen: true);
+        AddTextColumn("学年", nameof(PersonAnnualMealRow.Grade), 38, frozen: true);
+        AddTextColumn("組", nameof(PersonAnnualMealRow.ClassName), 34, frozen: true);
+        AddTextColumn("番号", nameof(PersonAnnualMealRow.StudentNumber), 43, frozen: true);
+        AddTextColumn("氏名", nameof(PersonAnnualMealRow.Name), 105, frozen: true);
+        AddTextColumn("現在の配膳場所", nameof(PersonAnnualMealRow.DeliveryPlace), 95, frozen: true);
 
         for (var fiscalMonthIndex = 0; fiscalMonthIndex < 12; fiscalMonthIndex++)
         {
@@ -224,20 +226,21 @@ public sealed class IndividualAnnualMealCountForm : Form
             {
                 HeaderText = $"{month.Month}月",
                 DataPropertyName = $"Month{fiscalMonthIndex + 1}",
-                Width = 70,
+                Width = 55,
                 SortMode = DataGridViewColumnSortMode.NotSortable,
                 Tag = month,
                 DefaultCellStyle = new DataGridViewCellStyle
                 {
-                    Alignment = DataGridViewContentAlignment.MiddleCenter
+                    Alignment = DataGridViewContentAlignment.MiddleCenter,
+                    WrapMode = DataGridViewTriState.True
                 }
             });
         }
 
-        AddCountColumn("喫食", nameof(PersonAnnualMealRow.ActualCount), 55);
-        AddCountColumn("予定", nameof(PersonAnnualMealRow.PlannedCount), 55);
-        AddCountColumn("年間", nameof(PersonAnnualMealRow.TotalCount), 55);
-        AddCountColumn("牛乳", nameof(PersonAnnualMealRow.MilkCount), 55);
+        AddCountColumn("喫食", nameof(PersonAnnualMealRow.ActualCount), 48);
+        AddCountColumn("予定", nameof(PersonAnnualMealRow.PlannedCount), 48);
+        AddCountColumn("年間", nameof(PersonAnnualMealRow.TotalCount), 48);
+        AddCountColumn("牛乳", nameof(PersonAnnualMealRow.MilkCount), 48);
         _grid.CellDoubleClick += (_, eventArgs) => ShowMonthDetails(
             eventArgs.RowIndex,
             eventArgs.ColumnIndex);
@@ -460,7 +463,7 @@ public sealed class IndividualAnnualMealCountForm : Form
     {
         if (actual > 0 && planned > 0)
         {
-            return $"実{actual}/予{planned}";
+            return $"実{actual}\n予{planned}";
         }
 
         return planned > 0 ? $"予{planned}" : $"実{actual}";
