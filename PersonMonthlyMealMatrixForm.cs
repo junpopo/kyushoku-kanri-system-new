@@ -278,7 +278,14 @@ public sealed class PersonMonthlyMealMatrixForm : Form
         }
 
         var reason = _mealReasonProvider(date).Trim();
-        return reason.Length == 0 ? "" : string.Join("\n", reason.ToCharArray());
+        var verticalReason = reason
+            .Replace("（", "", StringComparison.Ordinal)
+            .Replace("）", "", StringComparison.Ordinal)
+            .Replace("(", "", StringComparison.Ordinal)
+            .Replace(")", "", StringComparison.Ordinal);
+        return verticalReason.Length == 0
+            ? ""
+            : string.Join("\n", verticalReason.ToCharArray());
     }
 
     private void StyleReasonCell(DataGridViewCell cell, DateTime date)
