@@ -244,6 +244,8 @@ public sealed class IndividualAnnualMealCountForm : Form
         _grid.CellDoubleClick += (_, eventArgs) => ShowMonthDetails(
             eventArgs.RowIndex,
             eventArgs.ColumnIndex);
+        _grid.ColumnHeaderMouseClick += (_, eventArgs) =>
+            ShowSelectedPersonMonth(eventArgs.ColumnIndex);
         _grid.CellFormatting += (_, eventArgs) => StyleMonthCell(
             eventArgs.ColumnIndex,
             eventArgs.CellStyle);
@@ -284,6 +286,12 @@ public sealed class IndividualAnnualMealCountForm : Form
             $"喫食予定: {_rows.Sum(row => row.PlannedCount)}　" +
             $"年間合計: {_rows.Sum(row => row.TotalCount)}　" +
             $"牛乳: {_rows.Sum(row => row.MilkCount)}";
+
+        if (_rows.Count == 1 && _grid.Rows.Count == 1)
+        {
+            _grid.Rows[0].Selected = true;
+            _grid.CurrentCell = _grid.Rows[0].Cells[0];
+        }
     }
 
     private PersonAnnualMealRow BuildRow(Person person, IReadOnlyCollection<DateTime> dates)
@@ -332,6 +340,38 @@ public sealed class IndividualAnnualMealCountForm : Form
             return;
         }
 
+        ShowPersonMonth(row, month);
+    }
+
+    private void ShowSelectedPersonMonth(int columnIndex)
+    {
+        if (columnIndex < 0 ||
+            _grid.Columns[columnIndex].Tag is not DateTime month)
+        {
+            return;
+        }
+
+        var row = _grid.CurrentRow?.DataBoundItem as PersonAnnualMealRow;
+        if (row is null && _rows.Count == 1)
+        {
+            row = _rows[0];
+        }
+
+        if (row is null)
+        {
+            MessageBox.Show(
+                "月間喫食状況を表示する人を選択してください。",
+                "個人別年間喫食数",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+            return;
+        }
+
+        ShowPersonMonth(row, month);
+    }
+
+    private void ShowPersonMonth(PersonAnnualMealRow row, DateTime month)
+    {
         var dialog = new PersonMonthlyMealMatrixForm(
             month,
             row.Person,
