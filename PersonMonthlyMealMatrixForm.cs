@@ -50,7 +50,7 @@ public sealed class PersonMonthlyMealMatrixForm : Form
         };
         var legend = new Label
         {
-            Text = "給食: ○ 喫食　牛乳: 有 あり／無 なし　停 停止　欠 欠席　－ 非喫食日　外 在籍期間外",
+            Text = "給食: ○ 喫食　牛乳: 有 あり／無 なし　✕ 停止　欠 欠席　－ 非喫食日　外 在籍期間外",
             AutoSize = true,
             ForeColor = Color.FromArgb(55, 65, 75),
             Margin = new Padding(0, 0, 0, 8)
@@ -160,7 +160,7 @@ public sealed class PersonMonthlyMealMatrixForm : Form
             return status switch
             {
                 MealStatus.Absent => "欠",
-                _ => "停"
+                _ => "✕"
             };
         }
 
@@ -193,7 +193,7 @@ public sealed class PersonMonthlyMealMatrixForm : Form
                 cell.Style.BackColor = Color.FromArgb(240, 240, 240);
                 cell.Style.ForeColor = Color.FromArgb(90, 90, 90);
                 break;
-            case "停":
+            case "✕":
                 cell.Style.BackColor = Color.FromArgb(255, 235, 200);
                 cell.Style.ForeColor = Color.FromArgb(145, 78, 0);
                 break;
@@ -223,7 +223,7 @@ public sealed class PersonMonthlyMealMatrixForm : Form
             "○" => "喫食",
             "有" => "あり",
             "無" => "なし",
-            "停" => "停止",
+            "✕" => "停止",
             "欠" => "欠席",
             "外" => "在籍期間外",
             _ => "非喫食日"
