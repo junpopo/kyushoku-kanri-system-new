@@ -11,6 +11,7 @@ public sealed class IndividualAnnualMealCountForm : Form
     private readonly DataGridView _grid = new();
     private readonly ComboBox _typeFilter = new();
     private readonly ComboBox _gradeFilter = new();
+    private readonly ComboBox _classFilter = new();
     private readonly ComboBox _personFilter = new();
     private readonly TextBox _keywordFilter = new();
     private readonly Label _totalLabel = new();
@@ -70,6 +71,9 @@ public sealed class IndividualAnnualMealCountForm : Form
         search.Controls.Add(CreateLabel("学年"));
         _gradeFilter.Width = 75;
         search.Controls.Add(_gradeFilter);
+        search.Controls.Add(CreateLabel("組"));
+        _classFilter.Width = 70;
+        search.Controls.Add(_classFilter);
         search.Controls.Add(CreateLabel("氏名選択"));
         _personFilter.Width = 235;
         search.Controls.Add(_personFilter);
@@ -125,6 +129,21 @@ public sealed class IndividualAnnualMealCountForm : Form
             .ToArray());
         _gradeFilter.SelectedIndex = 0;
         _gradeFilter.SelectedIndexChanged += (_, _) => RefreshRows();
+
+        _classFilter.DropDownStyle = ComboBoxStyle.DropDownList;
+        _classFilter.Items.Add("すべて");
+        _classFilter.Items.AddRange(_people
+            .Where(person =>
+                person.Type == PersonType.Student &&
+                !string.IsNullOrWhiteSpace(person.ClassName))
+            .Select(person => person.ClassName.Trim())
+            .Distinct(StringComparer.CurrentCultureIgnoreCase)
+            .OrderBy(SortNumber)
+            .ThenBy(value => value)
+            .Cast<object>()
+            .ToArray());
+        _classFilter.SelectedIndex = 0;
+        _classFilter.SelectedIndexChanged += (_, _) => RefreshRows();
 
         _personFilter.DropDownStyle = ComboBoxStyle.DropDownList;
         _personFilter.DisplayMember = nameof(PersonOption.Label);
@@ -222,6 +241,7 @@ public sealed class IndividualAnnualMealCountForm : Form
             .Where(person => dates.Any(date => IsActive(person, date)))
             .Where(MatchesType)
             .Where(MatchesGrade)
+            .Where(MatchesClass)
             .Where(MatchesPerson)
             .Where(person => MatchesKeyword(person, keyword))
             .OrderBy(person => person.Type)
@@ -302,6 +322,7 @@ public sealed class IndividualAnnualMealCountForm : Form
     {
         _typeFilter.SelectedIndex = 0;
         _gradeFilter.SelectedIndex = 0;
+        _classFilter.SelectedIndex = 0;
         _personFilter.SelectedIndex = 0;
         _keywordFilter.Clear();
         RefreshRows();
@@ -318,6 +339,14 @@ public sealed class IndividualAnnualMealCountForm : Form
         return _gradeFilter.SelectedIndex <= 0 ||
                person.Grade.Equals(
                    Convert.ToString(_gradeFilter.SelectedItem),
+                   StringComparison.CurrentCultureIgnoreCase);
+    }
+
+    private bool MatchesClass(Person person)
+    {
+        return _classFilter.SelectedIndex <= 0 ||
+               person.ClassName.Equals(
+                   Convert.ToString(_classFilter.SelectedItem),
                    StringComparison.CurrentCultureIgnoreCase);
     }
 
