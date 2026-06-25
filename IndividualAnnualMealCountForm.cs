@@ -245,7 +245,7 @@ public sealed class IndividualAnnualMealCountForm : Form
             eventArgs.RowIndex,
             eventArgs.ColumnIndex);
         _grid.ColumnHeaderMouseClick += (_, eventArgs) =>
-            ShowSelectedPersonMonth(eventArgs.ColumnIndex);
+            ShowSearchResultMonth(eventArgs.ColumnIndex);
         _grid.CellFormatting += (_, eventArgs) => StyleMonthCell(
             eventArgs.ColumnIndex,
             eventArgs.CellStyle);
@@ -343,7 +343,7 @@ public sealed class IndividualAnnualMealCountForm : Form
         ShowPersonMonth(row, month);
     }
 
-    private void ShowSelectedPersonMonth(int columnIndex)
+    private void ShowSearchResultMonth(int columnIndex)
     {
         if (columnIndex < 0 ||
             _grid.Columns[columnIndex].Tag is not DateTime month)
@@ -351,23 +351,22 @@ public sealed class IndividualAnnualMealCountForm : Form
             return;
         }
 
-        var row = _grid.CurrentRow?.DataBoundItem as PersonAnnualMealRow;
-        if (row is null && _rows.Count == 1)
-        {
-            row = _rows[0];
-        }
-
-        if (row is null)
+        if (_rows.Count == 0)
         {
             MessageBox.Show(
-                "月間喫食状況を表示する人を選択してください。",
+                "検索結果がありません。",
                 "個人別年間喫食数",
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Information);
             return;
         }
 
-        ShowPersonMonth(row, month);
+        var dialog = new SearchResultMonthlyMealMatrixForm(
+            month,
+            _rows.Select(row => row.Person).ToList(),
+            _mealStatusProvider,
+            _mealReasonProvider);
+        dialog.Show(this);
     }
 
     private void ShowPersonMonth(PersonAnnualMealRow row, DateTime month)
