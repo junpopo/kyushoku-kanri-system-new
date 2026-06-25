@@ -50,15 +50,28 @@ public static class MealStatusCalculator
 
         var record = records.FirstOrDefault(item =>
             item.PersonId == person.Id && item.Date.Date == date.Date);
-        if (record is not null)
+        if (record is not null && !string.IsNullOrWhiteSpace(record.Reason))
         {
             return record.Reason;
         }
 
-        var change = ApplicableChange(person, date, changes);
-        if (HasPendingHigherPriorityStart(person, date, change, changes))
+        if (record?.Status == MealStatus.Serve)
         {
-            return "給食開始日前";
+            return "";
+        }
+
+        if (record?.Status == MealStatus.Absent)
+        {
+            return "欠席";
+        }
+
+        var change = ApplicableChange(person, date, changes);
+        var pendingStart = PendingHigherPriorityStart(person, date, change, changes);
+        if (pendingStart is not null)
+        {
+            return string.IsNullOrWhiteSpace(pendingStart.Reason)
+                ? "給食開始日前"
+                : $"給食開始日前（{pendingStart.Reason}）";
         }
 
         if (change?.Action == MealScheduleAction.Stop)
@@ -66,6 +79,11 @@ public static class MealStatusCalculator
             return string.IsNullOrWhiteSpace(change.Reason)
                 ? $"{ScopeLabel(change.Scope)}で給食停止"
                 : change.Reason;
+        }
+
+        if (record is not null)
+        {
+            return "日別設定で給食停止";
         }
 
         return person.EatsOn(date.DayOfWeek) ? "" : "喫食日ではありません";
@@ -92,15 +110,28 @@ public static class MealStatusCalculator
         MealScheduleChange? currentChange,
         IReadOnlyCollection<MealScheduleChange> changes)
     {
+        return PendingHigherPriorityStart(person, date, currentChange, changes) is not null;
+    }
+
+    private static MealScheduleChange? PendingHigherPriorityStart(
+        Person person,
+        DateTime date,
+        MealScheduleChange? currentChange,
+        IReadOnlyCollection<MealScheduleChange> changes)
+    {
         var currentPriority = currentChange is null
             ? -1
             : ScopePriority(currentChange.Scope);
-        return changes.Any(change =>
-            change.Action == MealScheduleAction.Start &&
-            change.EndDate is null &&
-            change.EffectiveDate.Date > date.Date &&
-            Applies(change, person) &&
-            ScopePriority(change.Scope) > currentPriority);
+        return changes
+            .Where(change =>
+                change.Action == MealScheduleAction.Start &&
+                change.EndDate is null &&
+                change.EffectiveDate.Date > date.Date &&
+                Applies(change, person) &&
+                ScopePriority(change.Scope) > currentPriority)
+            .OrderBy(change => change.EffectiveDate)
+            .ThenByDescending(change => ScopePriority(change.Scope))
+            .FirstOrDefault();
     }
 
     private static bool Applies(MealScheduleChange change, Person person)
