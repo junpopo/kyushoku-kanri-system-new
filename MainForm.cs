@@ -693,14 +693,14 @@ public sealed class MainForm : Form
         _monthlyMatrixGrid.Columns.Add(new DataGridViewTextBoxColumn
         {
             HeaderText = "基本数",
-            Width = 55,
+            Width = 45,
             Frozen = true,
             SortMode = DataGridViewColumnSortMode.NotSortable
         });
         _monthlyMatrixGrid.Columns.Add(new DataGridViewTextBoxColumn
         {
             HeaderText = "区分",
-            Width = 75,
+            Width = 90,
             Frozen = true,
             SortMode = DataGridViewColumnSortMode.NotSortable
         });
@@ -829,20 +829,23 @@ public sealed class MainForm : Form
         }
 
         AddMonthlyMatrixSectionHeader("日別合計", daysInMonth);
-        AddMonthlyMatrixSummaryRow("生徒合計", month, daysInMonth,
+        var studentTotalRow = AddMonthlyMatrixSummaryRow("生徒合計", month, daysInMonth,
             date => CountMeals(date, person => person.Type == PersonType.Student),
             Color.FromArgb(224, 239, 252));
-        AddMonthlyMatrixSummaryRow("職員室合計", month, daysInMonth,
+        EmphasizeMonthlySummaryLabel(studentTotalRow);
+        var staffRoomTotalRow = AddMonthlyMatrixSummaryRow("職員室合計", month, daysInMonth,
             date => CountMeals(date, person =>
                 person.Type != PersonType.Tasting &&
                 IsStaffRoom(person.GetDeliveryPlace(date))),
             Color.FromArgb(232, 241, 250));
-        AddMonthlyMatrixSummaryRow("教室職員合計", month, daysInMonth,
+        EmphasizeMonthlySummaryLabel(staffRoomTotalRow);
+        var classroomStaffTotalRow = AddMonthlyMatrixSummaryRow("教室職員合計", month, daysInMonth,
             date => CountMeals(date, person =>
                 person.Type != PersonType.Student &&
                 person.Type != PersonType.Tasting &&
                 !IsStaffRoom(person.GetDeliveryPlace(date))),
             Color.FromArgb(238, 238, 248));
+        EmphasizeMonthlySummaryLabel(classroomStaffTotalRow);
         AddMonthlyMatrixSummaryRow("給食合計", month, daysInMonth,
             date => CountMeals(date, person => person.Type != PersonType.Tasting),
             Color.FromArgb(224, 239, 252));
@@ -853,6 +856,7 @@ public sealed class MainForm : Form
                 person.HasMilk &&
                 GetMealStatus(person, date) == MealStatus.Serve),
             Color.FromArgb(226, 243, 235));
+        EmphasizeMonthlySummaryLabel(milkRow);
         milkRow.Tag = MonthlySummaryRowTag.MilkStopped;
         for (var day = 1; day <= daysInMonth; day++)
         {
@@ -1131,6 +1135,16 @@ public sealed class MainForm : Form
         row.DefaultCellStyle.Font = new Font(_monthlyMatrixGrid.Font, FontStyle.Bold);
         StyleMonthlyMatrixRow(row, month, daysInMonth, true);
         return row;
+    }
+
+    private void EmphasizeMonthlySummaryLabel(DataGridViewRow row)
+    {
+        row.Height = 27;
+        row.Cells[2].Style.Font = new Font(
+            _monthlyMatrixGrid.Font.FontFamily,
+            _monthlyMatrixGrid.Font.Size + 1,
+            FontStyle.Bold);
+        row.Cells[2].Style.ForeColor = Color.FromArgb(25, 45, 65);
     }
 
     private static void MarkStudentMealCountChanges(
