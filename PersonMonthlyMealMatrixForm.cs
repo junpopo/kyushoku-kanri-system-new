@@ -50,7 +50,7 @@ public sealed class PersonMonthlyMealMatrixForm : Form
         };
         var legend = new Label
         {
-            Text = "給食: ○ 喫食　牛乳: 有 あり／無 なし　✕ 停止　欠 欠席　－ 非喫食日　外 在籍期間外",
+            Text = "給食: ○ 喫食　牛乳: ○ あり／無 なし　✕ 停止　欠 欠席　－ 非喫食日　外 在籍期間外",
             AutoSize = true,
             ForeColor = Color.FromArgb(55, 65, 75),
             Margin = new Padding(0, 0, 0, 8)
@@ -171,23 +171,23 @@ public sealed class PersonMonthlyMealMatrixForm : Form
     {
         var mealStatus = MealStatusLabel(date);
         return mealStatus == "○"
-            ? _person.HasMilk ? "有" : "無"
+            ? _person.HasMilk ? "○" : "無"
             : mealStatus;
     }
 
     private void StyleStatusCell(DataGridViewCell cell, DateTime date, string item)
     {
         var label = Convert.ToString(cell.Value) ?? "";
-        cell.ToolTipText = $"{date:yyyy年M月d日} {item}: {FullStatusLabel(label)}";
+        cell.ToolTipText = $"{date:yyyy年M月d日} {item}: {FullStatusLabel(label, item)}";
         switch (label)
         {
             case "○":
-                cell.Style.BackColor = Color.FromArgb(220, 242, 228);
-                cell.Style.ForeColor = Color.FromArgb(24, 105, 58);
-                break;
-            case "有":
-                cell.Style.BackColor = Color.FromArgb(218, 235, 252);
-                cell.Style.ForeColor = Color.FromArgb(25, 80, 135);
+                cell.Style.BackColor = item == "牛乳"
+                    ? Color.FromArgb(218, 235, 252)
+                    : Color.FromArgb(220, 242, 228);
+                cell.Style.ForeColor = item == "牛乳"
+                    ? Color.FromArgb(25, 80, 135)
+                    : Color.FromArgb(24, 105, 58);
                 break;
             case "無":
                 cell.Style.BackColor = Color.FromArgb(240, 240, 240);
@@ -216,12 +216,11 @@ public sealed class PersonMonthlyMealMatrixForm : Form
                (_person.ActiveTo is null || _person.ActiveTo.Value.Date >= date.Date);
     }
 
-    private static string FullStatusLabel(string label)
+    private static string FullStatusLabel(string label, string item)
     {
         return label switch
         {
-            "○" => "喫食",
-            "有" => "あり",
+            "○" => item == "牛乳" ? "あり" : "喫食",
             "無" => "なし",
             "✕" => "停止",
             "欠" => "欠席",
