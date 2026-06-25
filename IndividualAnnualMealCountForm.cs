@@ -11,6 +11,7 @@ public sealed class IndividualAnnualMealCountForm : Form
     private readonly DataGridView _grid = new();
     private readonly ComboBox _typeFilter = new();
     private readonly ComboBox _gradeFilter = new();
+    private readonly ComboBox _personFilter = new();
     private readonly TextBox _keywordFilter = new();
     private readonly Label _totalLabel = new();
 
@@ -69,8 +70,11 @@ public sealed class IndividualAnnualMealCountForm : Form
         search.Controls.Add(CreateLabel("学年"));
         _gradeFilter.Width = 75;
         search.Controls.Add(_gradeFilter);
+        search.Controls.Add(CreateLabel("氏名選択"));
+        _personFilter.Width = 235;
+        search.Controls.Add(_personFilter);
         search.Controls.Add(CreateLabel("氏名・番号"));
-        _keywordFilter.Width = 170;
+        _keywordFilter.Width = 140;
         search.Controls.Add(_keywordFilter);
         search.Controls.Add(CreateButton("検索", RefreshRows));
         search.Controls.Add(CreateButton("条件クリア", ClearFilters));
@@ -121,6 +125,29 @@ public sealed class IndividualAnnualMealCountForm : Form
             .ToArray());
         _gradeFilter.SelectedIndex = 0;
         _gradeFilter.SelectedIndexChanged += (_, _) => RefreshRows();
+
+        _personFilter.DropDownStyle = ComboBoxStyle.DropDownList;
+        _personFilter.DisplayMember = nameof(PersonOption.Label);
+        _personFilter.ValueMember = nameof(PersonOption.Id);
+        _personFilter.DataSource = new[]
+            {
+                new PersonOption(null, "すべて")
+            }
+            .Concat(_people
+                .OrderBy(person => person.Type)
+                .ThenBy(person => SortNumber(person.Grade))
+                .ThenBy(person => person.Grade)
+                .ThenBy(person => SortNumber(person.ClassName))
+                .ThenBy(person => person.ClassName)
+                .ThenBy(person => SortNumber(person.StudentNumber))
+                .ThenBy(person => person.FullName)
+                .Select(person => new PersonOption(
+                    person.Id,
+                    PersonOptionLabel(person))))
+            .ToList();
+        _personFilter.SelectedIndex = 0;
+        _personFilter.SelectedIndexChanged += (_, _) => RefreshRows();
+
         _keywordFilter.KeyDown += (_, eventArgs) =>
         {
             if (eventArgs.KeyCode == Keys.Enter)
@@ -195,6 +222,7 @@ public sealed class IndividualAnnualMealCountForm : Form
             .Where(person => dates.Any(date => IsActive(person, date)))
             .Where(MatchesType)
             .Where(MatchesGrade)
+            .Where(MatchesPerson)
             .Where(person => MatchesKeyword(person, keyword))
             .OrderBy(person => person.Type)
             .ThenBy(person => SortNumber(person.Grade))
@@ -274,6 +302,7 @@ public sealed class IndividualAnnualMealCountForm : Form
     {
         _typeFilter.SelectedIndex = 0;
         _gradeFilter.SelectedIndex = 0;
+        _personFilter.SelectedIndex = 0;
         _keywordFilter.Clear();
         RefreshRows();
     }
@@ -290,6 +319,13 @@ public sealed class IndividualAnnualMealCountForm : Form
                person.Grade.Equals(
                    Convert.ToString(_gradeFilter.SelectedItem),
                    StringComparison.CurrentCultureIgnoreCase);
+    }
+
+    private bool MatchesPerson(Person person)
+    {
+        return _personFilter.SelectedItem is not PersonOption option ||
+               option.Id is null ||
+               option.Id == person.Id;
     }
 
     private static bool MatchesKeyword(Person person, string keyword)
@@ -401,6 +437,13 @@ public sealed class IndividualAnnualMealCountForm : Form
         return int.TryParse(value, out var number) ? number : int.MaxValue;
     }
 
+    private static string PersonOptionLabel(Person person)
+    {
+        return person.Type == PersonType.Student
+            ? $"{person.Grade}年{person.ClassName}組{person.StudentNumber}番　{person.FullName}"
+            : $"{person.TypeLabel}　{person.FullName}";
+    }
+
     private static Label CreateLabel(string text)
     {
         return new Label
@@ -469,4 +512,6 @@ public sealed class IndividualAnnualMealCountForm : Form
             }
         }
     }
+
+    private sealed record PersonOption(Guid? Id, string Label);
 }
