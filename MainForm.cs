@@ -1460,6 +1460,7 @@ public sealed class MainForm : Form
         return _data.MealScheduleChanges
             .Where(change =>
                 change.EffectiveDate.Date <= date.Date &&
+                (change.EndDate is null || change.EndDate.Value.Date >= date.Date) &&
                 MealScheduleApplies(change, person))
             .OrderByDescending(change => change.EffectiveDate)
             .ThenByDescending(change => MealScheduleScopePriority(change.Scope))
@@ -1476,6 +1477,7 @@ public sealed class MainForm : Form
             : MealScheduleScopePriority(currentChange.Scope);
         return _data.MealScheduleChanges.Any(change =>
             change.Action == MealScheduleAction.Start &&
+            change.EndDate is null &&
             change.EffectiveDate.Date > date.Date &&
             MealScheduleApplies(change, person) &&
             MealScheduleScopePriority(change.Scope) > currentPriority);

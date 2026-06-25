@@ -137,6 +137,7 @@ public sealed class MealScheduleChange
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public DateTime EffectiveDate { get; set; } = DateTime.Today;
+    public DateTime? EndDate { get; set; }
     public MealScheduleScope Scope { get; set; } = MealScheduleScope.Person;
     public string Grade { get; set; } = "";
     public Guid? PersonId { get; set; }

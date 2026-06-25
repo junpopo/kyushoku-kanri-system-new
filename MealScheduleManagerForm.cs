@@ -8,6 +8,8 @@ public sealed class MealScheduleManagerForm : Form
     private readonly IReadOnlyCollection<Person> _people;
     private readonly DataGridView _grid = new();
     private readonly DateTimePicker _effectiveDate = new();
+    private readonly ComboBox _periodType = new();
+    private readonly DateTimePicker _endDate = new();
     private readonly ComboBox _scope = new();
     private readonly ComboBox _grade = new();
     private readonly ComboBox _person = new();
@@ -103,7 +105,8 @@ public sealed class MealScheduleManagerForm : Form
         _grid.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
         _grid.MultiSelect = false;
         _grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
-        _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "適用日", DataPropertyName = nameof(ScheduleRow.Date), FillWeight = 75 });
+        _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "開始日", DataPropertyName = nameof(ScheduleRow.StartDate), FillWeight = 75 });
+        _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "終了日", DataPropertyName = nameof(ScheduleRow.EndDate), FillWeight = 75 });
         _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "対象", DataPropertyName = nameof(ScheduleRow.Scope), FillWeight = 65 });
         _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "学年・個人", DataPropertyName = nameof(ScheduleRow.Target), FillWeight = 130 });
         _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "変更", DataPropertyName = nameof(ScheduleRow.Action), FillWeight = 70 });
@@ -119,7 +122,7 @@ public sealed class MealScheduleManagerForm : Form
             Dock = DockStyle.Fill,
             AutoSize = true,
             ColumnCount = 4,
-            RowCount = 3,
+            RowCount = 4,
             Padding = new Padding(0, 12, 0, 0)
         };
         panel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 70));
@@ -127,18 +130,36 @@ public sealed class MealScheduleManagerForm : Form
         panel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 70));
         panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
 
-        AddField(panel, 0, 0, "適用日", _effectiveDate);
-        AddField(panel, 0, 2, "対象", _scope);
-        AddField(panel, 1, 0, "学年", _grade);
-        AddField(panel, 1, 2, "個人", _person);
-        AddField(panel, 2, 0, "変更", _action);
-        AddField(panel, 2, 2, "理由", _reason);
+        AddField(panel, 0, 0, "開始日", _effectiveDate);
+        AddField(panel, 0, 2, "適用方法", _periodType);
+        AddField(panel, 1, 0, "終了日", _endDate);
+        AddField(panel, 1, 2, "対象", _scope);
+        AddField(panel, 2, 0, "学年", _grade);
+        AddField(panel, 2, 2, "個人", _person);
+        AddField(panel, 3, 0, "変更", _action);
+        AddField(panel, 3, 2, "理由", _reason);
         return panel;
     }
 
     private void ConfigureInputs()
     {
         _effectiveDate.Format = DateTimePickerFormat.Short;
+        _effectiveDate.ValueChanged += (_, _) =>
+        {
+            if (_periodType.SelectedIndex == 0 || _endDate.Value.Date < _effectiveDate.Value.Date)
+            {
+                _endDate.Value = _effectiveDate.Value.Date;
+            }
+        };
+
+        _periodType.DropDownStyle = ComboBoxStyle.DropDownList;
+        _periodType.Items.AddRange(["1日だけ", "期間指定", "終了日なし"]);
+        _periodType.SelectedIndex = 0;
+        _periodType.SelectedIndexChanged += (_, _) => UpdatePeriodInputs();
+
+        _endDate.Format = DateTimePickerFormat.Short;
+        _endDate.Value = _effectiveDate.Value.Date;
+
         _scope.DropDownStyle = ComboBoxStyle.DropDownList;
         _scope.Items.AddRange(["全体", "学年", "個人"]);
         _scope.SelectedIndex = 2;
@@ -171,6 +192,7 @@ public sealed class MealScheduleManagerForm : Form
         _action.DropDownStyle = ComboBoxStyle.DropDownList;
         _action.Items.AddRange(["開始", "停止", "再開"]);
         _action.SelectedIndex = 1;
+        UpdatePeriodInputs();
         UpdateTargetInputs();
     }
 
@@ -194,6 +216,7 @@ public sealed class MealScheduleManagerForm : Form
         }
 
         selected.EffectiveDate = replacement.EffectiveDate;
+        selected.EndDate = replacement.EndDate;
         selected.Scope = replacement.Scope;
         selected.Grade = replacement.Grade;
         selected.PersonId = replacement.PersonId;
@@ -220,10 +243,17 @@ public sealed class MealScheduleManagerForm : Form
         change = new MealScheduleChange
         {
             EffectiveDate = _effectiveDate.Value.Date,
+            EndDate = EndDateFromInputs(),
             Scope = ScopeFromIndex(_scope.SelectedIndex),
             Action = ActionFromIndex(_action.SelectedIndex),
             Reason = _reason.Text.Trim()
         };
+
+        if (change.EndDate is DateTime endDate && endDate.Date < change.EffectiveDate.Date)
+        {
+            MessageBox.Show("終了日は開始日以降の日付を指定してください。");
+            return false;
+        }
 
         if (change.Scope == MealScheduleScope.Grade)
         {
@@ -259,7 +289,8 @@ public sealed class MealScheduleManagerForm : Form
             _rows.Add(new ScheduleRow
             {
                 Id = change.Id,
-                Date = change.EffectiveDate.ToShortDateString(),
+                StartDate = change.EffectiveDate.ToShortDateString(),
+                EndDate = EndDateLabel(change),
                 Scope = ScopeLabel(change.Scope),
                 Target = TargetLabel(change),
                 Action = ActionLabel(change.Action),
@@ -292,6 +323,13 @@ public sealed class MealScheduleManagerForm : Form
         }
 
         _effectiveDate.Value = change.EffectiveDate;
+        _periodType.SelectedIndex = change.EndDate switch
+        {
+            null => 2,
+            DateTime endDate when endDate.Date == change.EffectiveDate.Date => 0,
+            _ => 1
+        };
+        _endDate.Value = change.EndDate ?? change.EffectiveDate;
         _scope.SelectedIndex = change.Scope switch
         {
             MealScheduleScope.All => 0,
@@ -317,6 +355,25 @@ public sealed class MealScheduleManagerForm : Form
             _ => 2
         };
         _reason.Text = change.Reason;
+    }
+
+    private void UpdatePeriodInputs()
+    {
+        _endDate.Enabled = _periodType.SelectedIndex == 1;
+        if (_periodType.SelectedIndex == 0)
+        {
+            _endDate.Value = _effectiveDate.Value.Date;
+        }
+    }
+
+    private DateTime? EndDateFromInputs()
+    {
+        return _periodType.SelectedIndex switch
+        {
+            0 => _effectiveDate.Value.Date,
+            1 => _endDate.Value.Date,
+            _ => null
+        };
     }
 
     private void UpdateTargetInputs()
@@ -376,6 +433,18 @@ public sealed class MealScheduleManagerForm : Form
         _ => "停止"
     };
 
+    private static string EndDateLabel(MealScheduleChange change)
+    {
+        if (change.EndDate is null)
+        {
+            return "終了日なし";
+        }
+
+        return change.EndDate.Value.Date == change.EffectiveDate.Date
+            ? "同日"
+            : change.EndDate.Value.ToShortDateString();
+    }
+
     private static int ScopePriority(MealScheduleScope scope) => scope switch
     {
         MealScheduleScope.All => 0,
@@ -429,6 +498,7 @@ public sealed class MealScheduleManagerForm : Form
         {
             Id = change.Id,
             EffectiveDate = change.EffectiveDate,
+            EndDate = change.EndDate,
             Scope = change.Scope,
             Grade = change.Grade,
             PersonId = change.PersonId,
@@ -447,7 +517,8 @@ public sealed class MealScheduleManagerForm : Form
     private sealed class ScheduleRow
     {
         public Guid Id { get; init; }
-        public string Date { get; init; } = "";
+        public string StartDate { get; init; } = "";
+        public string EndDate { get; init; } = "";
         public string Scope { get; init; } = "";
         public string Target { get; init; } = "";
         public string Action { get; init; } = "";
