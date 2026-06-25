@@ -504,6 +504,7 @@ public sealed class MainForm : Form
         _monthlyMatrixGrid.BorderStyle = BorderStyle.FixedSingle;
         _monthlyMatrixGrid.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
         _monthlyMatrixGrid.ColumnHeadersDefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+        _monthlyMatrixGrid.EnableHeadersVisualStyles = false;
         _monthlyMatrixGrid.ColumnHeadersHeight = 42;
         _monthlyMatrixGrid.RowTemplate.Height = 24;
         _monthlyMatrixGrid.CellClick += (_, eventArgs) =>
