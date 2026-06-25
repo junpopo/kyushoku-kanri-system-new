@@ -13,6 +13,7 @@ public sealed class ServedPeopleDetailsForm : Form
         Height = 480;
         MinimumSize = new Size(780, 360);
         StartPosition = FormStartPosition.CenterParent;
+        ControlBox = false;
 
         var root = new TableLayoutPanel
         {
