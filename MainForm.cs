@@ -191,6 +191,7 @@ public sealed class MainForm : Form
         top.Controls.Add(_mealMonthInput);
         top.Controls.Add(new Label { Text = "月", AutoSize = true, Padding = new Padding(2, 8, 4, 0) });
         top.Controls.Add(CreateButton("更新", RefreshMonthly));
+        top.Controls.Add(CreateButton("個人別月間喫食数", ShowIndividualMonthlyMealCounts));
         top.Controls.Add(CreateButton("給食開始・停止・再開", ManageMealSchedule, requiresAdmin: true));
 
         _monthlyTotalLabel.AutoSize = true;
@@ -1660,6 +1661,16 @@ public sealed class MainForm : Form
             RefreshSummary();
         };
         dialog.FormClosed += (_, _) => _mealScheduleManagerForm = null;
+        dialog.Show(this);
+    }
+
+    private void ShowIndividualMonthlyMealCounts()
+    {
+        var month = new DateTime(_selectedMealYear, _selectedMealMonth, 1);
+        var dialog = new IndividualMonthlyMealCountForm(
+            month,
+            _data.People,
+            GetMealStatus);
         dialog.Show(this);
     }
 

@@ -464,7 +464,7 @@ public sealed class MealScheduleManagerForm : Form
         var grade = string.IsNullOrWhiteSpace(person.Grade) ? "未設定" : $"{person.Grade}年";
         var className = string.IsNullOrWhiteSpace(person.ClassName) ? "未設定" : $"{person.ClassName}組";
         var number = string.IsNullOrWhiteSpace(person.StudentNumber) ? "未設定" : $"{person.StudentNumber}番";
-        return $"生徒　{grade}　{className}　{number}　{person.FullName}";
+        return $"生徒　{grade}{className}{number}　{person.FullName}";
     }
 
     private static void AddField(
