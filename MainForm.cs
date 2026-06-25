@@ -47,7 +47,6 @@ public sealed class MainForm : Form
         NormalizePeople();
         NormalizeDeliveryPlaces();
         NormalizeDeliveryPlaceHistories();
-        NormalizeSchoolClasses();
         Text = _currentUser is null
             ? "給食管理システム"
             : $"給食管理システム - {_currentUser.DisplayName}{(_isReadOnly ? "（閲覧のみ）" : "（管理者）")}";
@@ -120,58 +119,6 @@ public sealed class MainForm : Form
                     StartDate = person.ActiveFrom.Date
                 });
             }
-        }
-    }
-
-    private void NormalizeSchoolClasses()
-    {
-        _data.SchoolClasses ??= [];
-        AddSchoolClassesFromRoster(_registeredFiscalYear);
-        _data.SchoolClasses = _data.SchoolClasses
-            .Where(item =>
-                item.FiscalYear > 0 &&
-                !string.IsNullOrWhiteSpace(item.Grade) &&
-                !string.IsNullOrWhiteSpace(item.ClassName))
-            .Select(item => new SchoolClass
-            {
-                FiscalYear = item.FiscalYear,
-                Grade = item.Grade.Trim(),
-                ClassName = item.ClassName.Trim()
-            })
-            .DistinctBy(item =>
-                $"{item.FiscalYear}\u001f{item.Grade}\u001f{item.ClassName}")
-            .OrderBy(item => item.FiscalYear)
-            .ThenBy(item => ToNumber(item.Grade))
-            .ThenBy(item => item.Grade)
-            .ThenBy(item => ToNumber(item.ClassName))
-            .ThenBy(item => item.ClassName)
-            .ToList();
-    }
-
-    private void AddSchoolClassesFromRoster(int fiscalYear)
-    {
-        _data.SchoolClasses ??= [];
-        foreach (var person in _data.People.Where(person =>
-            person.Type == PersonType.Student &&
-            !string.IsNullOrWhiteSpace(person.Grade) &&
-            !string.IsNullOrWhiteSpace(person.ClassName)))
-        {
-            var grade = person.Grade.Trim();
-            var className = person.ClassName.Trim();
-            if (_data.SchoolClasses.Any(item =>
-                item.FiscalYear == fiscalYear &&
-                item.Grade.Equals(grade, StringComparison.CurrentCultureIgnoreCase) &&
-                item.ClassName.Equals(className, StringComparison.CurrentCultureIgnoreCase)))
-            {
-                continue;
-            }
-
-            _data.SchoolClasses.Add(new SchoolClass
-            {
-                FiscalYear = fiscalYear,
-                Grade = grade,
-                ClassName = className
-            });
         }
     }
 
@@ -273,7 +220,7 @@ public sealed class MainForm : Form
         {
             Dock = DockStyle.Fill,
             AutoSize = true,
-            WrapContents = true
+            WrapContents = false
         };
         buttons.Controls.Add(CreateButton("CSV名簿を読み込み", ImportRoster, requiresAdmin: true));
         buttons.Controls.Add(CreateButton("1人追加", AddPerson, requiresAdmin: true));
@@ -281,7 +228,6 @@ public sealed class MainForm : Form
         buttons.Controls.Add(CreateButton("選択を削除", DeleteSelectedPerson, requiresAdmin: true));
         buttons.Controls.Add(CreateButton("名簿を全員削除", DeleteAllPeople, requiresAdmin: true));
         buttons.Controls.Add(CreateButton("配膳場所管理", ManageDeliveryPlaces, requiresAdmin: true));
-        buttons.Controls.Add(CreateButton("学年・クラス管理", ManageSchoolClasses, requiresAdmin: true));
         buttons.Controls.Add(CreateButton("配膳別基本数", ManageDeliveryPlaceBasicCounts, requiresAdmin: true));
         buttons.Controls.Add(CreateButton("年度登録", RegisterFiscalYear, requiresAdmin: true));
         buttons.Controls.Add(CreateButton("終了", Close));
@@ -709,7 +655,6 @@ public sealed class MainForm : Form
 
         _registeredFiscalYear = dialog.FiscalYear;
         _data.RegisteredFiscalYear = _registeredFiscalYear;
-        AddSchoolClassesFromRoster(_registeredFiscalYear);
         _repository.Save(_data);
 
         _selectedMealMonth = 4;
@@ -1558,7 +1503,6 @@ public sealed class MainForm : Form
             }
         }
 
-        AddSchoolClassesFromRoster(_registeredFiscalYear);
         _repository.Save(_data);
         RefreshPeople();
         RefreshDaily();
@@ -1588,7 +1532,6 @@ public sealed class MainForm : Form
         }
 
         _data.People.Add(dialog.Person);
-        AddSchoolClassesFromRoster(_registeredFiscalYear);
         SaveAll(dialog.Person.Id);
     }
 
@@ -1627,7 +1570,6 @@ public sealed class MainForm : Form
         selected.ActiveFrom = dialog.Person.ActiveFrom;
         selected.ActiveTo = dialog.Person.ActiveTo;
         selected.Memo = dialog.Person.Memo;
-        AddSchoolClassesFromRoster(_registeredFiscalYear);
         SaveAll(selected.Id);
     }
 
@@ -1643,32 +1585,6 @@ public sealed class MainForm : Form
         _repository.Save(_data);
         RefreshPeople();
         RefreshDaily();
-        RefreshMonthly();
-    }
-
-    private void ManageSchoolClasses()
-    {
-        using var dialog = new SchoolClassManagerForm(
-            _data.SchoolClasses,
-            _data.People,
-            _registeredFiscalYear);
-        if (dialog.ShowDialog(this) != DialogResult.OK)
-        {
-            return;
-        }
-
-        _data.SchoolClasses.RemoveAll(item =>
-            item.FiscalYear == _registeredFiscalYear);
-        _data.SchoolClasses.AddRange(dialog.SchoolClasses);
-        foreach (var schoolClass in dialog.SchoolClasses)
-        {
-            AddDeliveryPlaceIfMissing(
-                CreateClassDeliveryPlace(
-                    schoolClass.Grade,
-                    schoolClass.ClassName));
-        }
-
-        _repository.Save(_data);
         RefreshMonthly();
     }
 
