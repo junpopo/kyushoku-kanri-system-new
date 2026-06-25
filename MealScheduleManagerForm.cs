@@ -108,7 +108,7 @@ public sealed class MealScheduleManagerForm : Form
         _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "開始日", DataPropertyName = nameof(ScheduleRow.StartDate), FillWeight = 75 });
         _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "終了日", DataPropertyName = nameof(ScheduleRow.EndDate), FillWeight = 75 });
         _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "対象", DataPropertyName = nameof(ScheduleRow.Scope), FillWeight = 65 });
-        _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "学年・個人", DataPropertyName = nameof(ScheduleRow.Target), FillWeight = 130 });
+        _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "学年・組・番号・個人", DataPropertyName = nameof(ScheduleRow.Target), FillWeight = 175 });
         _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "変更", DataPropertyName = nameof(ScheduleRow.Action), FillWeight = 70 });
         _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "理由", DataPropertyName = nameof(ScheduleRow.Reason), FillWeight = 180 });
         _grid.DataSource = _rows;
@@ -395,7 +395,9 @@ public sealed class MealScheduleManagerForm : Form
         {
             MealScheduleScope.All => "全員",
             MealScheduleScope.Grade => $"{change.Grade}年",
-            _ => _people.FirstOrDefault(person => person.Id == change.PersonId)?.FullName ?? "削除済み"
+            _ => _people.FirstOrDefault(person => person.Id == change.PersonId) is { } person
+                ? PersonLabel(person)
+                : "削除済み"
         };
     }
 
@@ -454,10 +456,15 @@ public sealed class MealScheduleManagerForm : Form
 
     private static string PersonLabel(Person person)
     {
-        var classLabel = person.Type == PersonType.Student
-            ? $" {person.Grade}年{person.ClassName}組 {person.StudentNumber}番"
-            : "";
-        return $"{person.TypeLabel}{classLabel} {person.FullName}".Trim();
+        if (person.Type != PersonType.Student)
+        {
+            return $"{person.TypeLabel}　{person.FullName}".Trim();
+        }
+
+        var grade = string.IsNullOrWhiteSpace(person.Grade) ? "未設定" : $"{person.Grade}年";
+        var className = string.IsNullOrWhiteSpace(person.ClassName) ? "未設定" : $"{person.ClassName}組";
+        var number = string.IsNullOrWhiteSpace(person.StudentNumber) ? "未設定" : $"{person.StudentNumber}番";
+        return $"生徒　{grade}　{className}　{number}　{person.FullName}";
     }
 
     private static void AddField(
