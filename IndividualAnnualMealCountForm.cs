@@ -12,6 +12,7 @@ public sealed class IndividualAnnualMealCountForm : Form
     private readonly ComboBox _typeFilter = new();
     private readonly ComboBox _gradeFilter = new();
     private readonly ComboBox _classFilter = new();
+    private readonly ComboBox _deliveryPlaceFilter = new();
     private readonly ComboBox _personFilter = new();
     private readonly TextBox _keywordFilter = new();
     private readonly Label _totalLabel = new();
@@ -74,8 +75,11 @@ public sealed class IndividualAnnualMealCountForm : Form
         search.Controls.Add(CreateLabel("組"));
         _classFilter.Width = 70;
         search.Controls.Add(_classFilter);
+        search.Controls.Add(CreateLabel("配膳場所"));
+        _deliveryPlaceFilter.Width = 120;
+        search.Controls.Add(_deliveryPlaceFilter);
         search.Controls.Add(CreateLabel("氏名選択"));
-        _personFilter.Width = 235;
+        _personFilter.Width = 210;
         search.Controls.Add(_personFilter);
         search.Controls.Add(CreateLabel("氏名・番号"));
         _keywordFilter.Width = 140;
@@ -144,6 +148,20 @@ public sealed class IndividualAnnualMealCountForm : Form
             .ToArray());
         _classFilter.SelectedIndex = 0;
         _classFilter.SelectedIndexChanged += (_, _) => RefreshRows();
+
+        _deliveryPlaceFilter.DropDownStyle = ComboBoxStyle.DropDownList;
+        _deliveryPlaceFilter.Items.Add("すべて");
+        _deliveryPlaceFilter.Items.AddRange(_people
+            .SelectMany(person => new[] { person.DeliveryPlace1 }
+                .Concat(person.DeliveryPlaceHistories.Select(history => history.DeliveryPlace)))
+            .Where(place => !string.IsNullOrWhiteSpace(place))
+            .Select(place => place.Trim())
+            .Distinct(StringComparer.CurrentCultureIgnoreCase)
+            .OrderBy(place => place)
+            .Cast<object>()
+            .ToArray());
+        _deliveryPlaceFilter.SelectedIndex = 0;
+        _deliveryPlaceFilter.SelectedIndexChanged += (_, _) => RefreshRows();
 
         _personFilter.DropDownStyle = ComboBoxStyle.DropDownList;
         _personFilter.DisplayMember = nameof(PersonOption.Label);
@@ -242,6 +260,7 @@ public sealed class IndividualAnnualMealCountForm : Form
             .Where(MatchesType)
             .Where(MatchesGrade)
             .Where(MatchesClass)
+            .Where(person => MatchesDeliveryPlace(person, dates))
             .Where(MatchesPerson)
             .Where(person => MatchesKeyword(person, keyword))
             .OrderBy(person => person.Type)
@@ -323,6 +342,7 @@ public sealed class IndividualAnnualMealCountForm : Form
         _typeFilter.SelectedIndex = 0;
         _gradeFilter.SelectedIndex = 0;
         _classFilter.SelectedIndex = 0;
+        _deliveryPlaceFilter.SelectedIndex = 0;
         _personFilter.SelectedIndex = 0;
         _keywordFilter.Clear();
         RefreshRows();
@@ -348,6 +368,23 @@ public sealed class IndividualAnnualMealCountForm : Form
                person.ClassName.Equals(
                    Convert.ToString(_classFilter.SelectedItem),
                    StringComparison.CurrentCultureIgnoreCase);
+    }
+
+    private bool MatchesDeliveryPlace(
+        Person person,
+        IReadOnlyCollection<DateTime> fiscalYearDates)
+    {
+        if (_deliveryPlaceFilter.SelectedIndex <= 0)
+        {
+            return true;
+        }
+
+        var selectedPlace = Convert.ToString(_deliveryPlaceFilter.SelectedItem) ?? "";
+        return fiscalYearDates.Any(date =>
+            IsActive(person, date) &&
+            person.GetDeliveryPlace(date).Equals(
+                selectedPlace,
+                StringComparison.CurrentCultureIgnoreCase));
     }
 
     private bool MatchesPerson(Person person)
