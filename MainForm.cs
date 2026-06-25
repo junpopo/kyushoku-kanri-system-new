@@ -978,15 +978,53 @@ public sealed class MainForm : Form
         return string.Join(
             "・",
             _data.People
-                .Where(person =>
-                    IsActive(person, date) &&
-                    GetMealStatus(person, date) == MealStatus.Stop)
-                .Select(person => GetMealStatusReason(person, date))
-                .Where(reason =>
-                    !string.IsNullOrWhiteSpace(reason) &&
-                    reason != "喫食日ではありません")
+                .Where(person => IsActive(person, date))
+                .Select(person => EffectiveMealScheduleChange(person, date))
+                .Where(change =>
+                    change?.Action == MealScheduleAction.Stop &&
+                    change.Scope is MealScheduleScope.All or MealScheduleScope.Grade)
+                .Cast<MealScheduleChange>()
+                .DistinctBy(change => change.Id)
+                .Select(change =>
+                {
+                    var reason = string.IsNullOrWhiteSpace(change.Reason)
+                        ? "給食停止"
+                        : change.Reason.Trim();
+                    return change.Scope == MealScheduleScope.Grade
+                        ? $"{change.Grade}年 {reason}"
+                        : reason;
+                })
                 .Distinct(StringComparer.CurrentCultureIgnoreCase)
                 .OrderBy(reason => reason));
+    }
+
+    private MealScheduleChange? EffectiveMealScheduleChange(
+        Person person,
+        DateTime date)
+    {
+        return _data.MealScheduleChanges
+            .Where(change =>
+                change.EffectiveDate.Date <= date.Date &&
+                (change.EndDate is null || change.EndDate.Value.Date >= date.Date) &&
+                change.Scope switch
+                {
+                    MealScheduleScope.All => true,
+                    MealScheduleScope.Grade =>
+                        person.Type == PersonType.Student &&
+                        person.Grade.Equals(
+                            change.Grade,
+                            StringComparison.CurrentCultureIgnoreCase),
+                    MealScheduleScope.Person => change.PersonId == person.Id,
+                    _ => false
+                })
+            .OrderByDescending(change => change.EffectiveDate)
+            .ThenByDescending(change => change.Scope switch
+            {
+                MealScheduleScope.All => 0,
+                MealScheduleScope.Grade => 1,
+                _ => 2
+            })
+            .FirstOrDefault();
     }
 
     private static string VerticalMonthlyReason(string reason)
