@@ -17,6 +17,7 @@ public sealed class MealScheduleManagerForm : Form
     private readonly TextBox _reason = new();
 
     public List<MealScheduleChange> Changes { get; private set; }
+    public event EventHandler? ChangesSaved;
 
     public MealScheduleManagerForm(
         IEnumerable<MealScheduleChange> changes,
@@ -75,21 +76,20 @@ public sealed class MealScheduleManagerForm : Form
         var save = new Button
         {
             Text = "保存",
-            DialogResult = DialogResult.OK,
             AutoSize = true,
             Padding = new Padding(16, 5, 16, 5)
         };
-        var cancel = new Button
+        save.Click += (_, _) => ChangesSaved?.Invoke(this, EventArgs.Empty);
+        var close = new Button
         {
-            Text = "キャンセル",
-            DialogResult = DialogResult.Cancel,
+            Text = "閉じる",
             AutoSize = true,
             Padding = new Padding(12, 5, 12, 5)
         };
+        close.Click += (_, _) => Close();
         closeButtons.Controls.Add(save);
-        closeButtons.Controls.Add(cancel);
+        closeButtons.Controls.Add(close);
         AcceptButton = save;
-        CancelButton = cancel;
         root.Controls.Add(closeButtons, 0, 3);
         return root;
     }

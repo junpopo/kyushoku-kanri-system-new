@@ -32,6 +32,7 @@ public sealed class MainForm : Form
     private int _selectedMealYear;
     private int _selectedMealMonth;
     private bool _updatingMealMonth;
+    private MealScheduleManagerForm? _mealScheduleManagerForm;
 
     public MainForm(AppUser? currentUser = null)
     {
@@ -190,7 +191,7 @@ public sealed class MainForm : Form
         top.Controls.Add(_mealMonthInput);
         top.Controls.Add(new Label { Text = "月", AutoSize = true, Padding = new Padding(2, 8, 4, 0) });
         top.Controls.Add(CreateButton("更新", RefreshMonthly));
-        top.Controls.Add(CreateButton("内閣府の祝日を取り込む", ImportCabinetOfficeHolidays, requiresAdmin: true));
+        top.Controls.Add(CreateButton("給食開始・停止・再開", ManageMealSchedule, requiresAdmin: true));
 
         _monthlyTotalLabel.AutoSize = true;
         _monthlyTotalLabel.Padding = new Padding(4, 8, 0, 0);
@@ -230,7 +231,7 @@ public sealed class MainForm : Form
         buttons.Controls.Add(CreateButton("名簿を全員削除", DeleteAllPeople, requiresAdmin: true));
         buttons.Controls.Add(CreateButton("配膳場所管理", ManageDeliveryPlaces, requiresAdmin: true));
         buttons.Controls.Add(CreateButton("配膳別基本数", ManageDeliveryPlaceBasicCounts, requiresAdmin: true));
-        buttons.Controls.Add(CreateButton("給食開始・停止・再開", ManageMealSchedule, requiresAdmin: true));
+        buttons.Controls.Add(CreateButton("内閣府の祝日を取り込む", ImportCabinetOfficeHolidays, requiresAdmin: true));
         buttons.Controls.Add(CreateButton("年度登録", RegisterFiscalYear, requiresAdmin: true));
         buttons.Controls.Add(CreateButton("終了", Close));
 
@@ -1161,7 +1162,7 @@ public sealed class MainForm : Form
         row.Cells[2].Style.ForeColor = Color.FromArgb(25, 45, 65);
     }
 
-    private static void MarkStudentMealCountChanges(
+    private void MarkStudentMealCountChanges(
         DataGridViewRow row,
         DateTime month,
         int daysInMonth)
@@ -1171,7 +1172,8 @@ public sealed class MainForm : Form
         for (var day = 1; day <= daysInMonth; day++)
         {
             var date = new DateTime(month.Year, month.Month, day);
-            if (date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
+            if (date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday ||
+                FindNoMealDate(date) is not null)
             {
                 continue;
             }
@@ -1195,7 +1197,7 @@ public sealed class MainForm : Form
         }
     }
 
-    private static void StyleMonthlyMatrixRow(
+    private void StyleMonthlyMatrixRow(
         DataGridViewRow row,
         DateTime month,
         int daysInMonth,
@@ -1208,7 +1210,8 @@ public sealed class MainForm : Form
         {
             var date = new DateTime(month.Year, month.Month, day);
             var cellIndex = day + 2;
-            if (date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
+            if (date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday ||
+                FindNoMealDate(date) is not null)
             {
                 row.Cells[cellIndex].Style.BackColor = Color.FromArgb(255, 205, 45);
                 row.Cells[cellIndex].Style.ForeColor = Color.FromArgb(80, 60, 0);
@@ -1421,122 +1424,22 @@ public sealed class MainForm : Form
 
     private MealStatus GetMealStatus(Person person, DateTime date)
     {
-        if (FindNoMealDate(date) is not null)
-        {
-            return MealStatus.Stop;
-        }
-
-        var record = _data.MealRecords.FirstOrDefault(item =>
-            item.PersonId == person.Id && item.Date.Date == date.Date);
-        if (record is not null)
-        {
-            return record.Status;
-        }
-
-        var change = ApplicableMealScheduleChange(person, date);
-        if (HasPendingHigherPriorityStart(person, date, change))
-        {
-            return MealStatus.Stop;
-        }
-
-        if (change?.Action == MealScheduleAction.Stop)
-        {
-            return MealStatus.Stop;
-        }
-
-        return person.EatsOn(date.DayOfWeek) ? MealStatus.Serve : MealStatus.Stop;
+        return MealStatusCalculator.GetStatus(
+            person,
+            date,
+            _data.MealRecords,
+            _data.MealScheduleChanges,
+            _data.NoMealDates);
     }
 
     private string GetMealStatusReason(Person person, DateTime date)
     {
-        var noMealDate = FindNoMealDate(date);
-        if (noMealDate is not null)
-        {
-            return $"給食なし（{noMealDate.Name}）";
-        }
-
-        var record = _data.MealRecords.FirstOrDefault(item =>
-            item.PersonId == person.Id && item.Date.Date == date.Date);
-        if (record is not null)
-        {
-            return record.Reason;
-        }
-
-        var change = ApplicableMealScheduleChange(person, date);
-        if (HasPendingHigherPriorityStart(person, date, change))
-        {
-            return "給食開始日前";
-        }
-
-        if (change?.Action == MealScheduleAction.Stop)
-        {
-            return string.IsNullOrWhiteSpace(change.Reason)
-                ? $"{MealScheduleScopeLabel(change.Scope)}で給食停止"
-                : change.Reason;
-        }
-
-        return person.EatsOn(date.DayOfWeek) ? "" : "喫食日ではありません";
-    }
-
-    private MealScheduleChange? ApplicableMealScheduleChange(Person person, DateTime date)
-    {
-        return _data.MealScheduleChanges
-            .Where(change =>
-                change.EffectiveDate.Date <= date.Date &&
-                (change.EndDate is null || change.EndDate.Value.Date >= date.Date) &&
-                MealScheduleApplies(change, person))
-            .OrderByDescending(change => change.EffectiveDate)
-            .ThenByDescending(change => MealScheduleScopePriority(change.Scope))
-            .FirstOrDefault();
-    }
-
-    private bool HasPendingHigherPriorityStart(
-        Person person,
-        DateTime date,
-        MealScheduleChange? currentChange)
-    {
-        var currentPriority = currentChange is null
-            ? -1
-            : MealScheduleScopePriority(currentChange.Scope);
-        return _data.MealScheduleChanges.Any(change =>
-            change.Action == MealScheduleAction.Start &&
-            change.EndDate is null &&
-            change.EffectiveDate.Date > date.Date &&
-            MealScheduleApplies(change, person) &&
-            MealScheduleScopePriority(change.Scope) > currentPriority);
-    }
-
-    private static bool MealScheduleApplies(MealScheduleChange change, Person person)
-    {
-        return change.Scope switch
-        {
-            MealScheduleScope.All => true,
-            MealScheduleScope.Grade =>
-                person.Type == PersonType.Student &&
-                person.Grade.Equals(change.Grade, StringComparison.CurrentCultureIgnoreCase),
-            MealScheduleScope.Person => change.PersonId == person.Id,
-            _ => false
-        };
-    }
-
-    private static int MealScheduleScopePriority(MealScheduleScope scope)
-    {
-        return scope switch
-        {
-            MealScheduleScope.All => 0,
-            MealScheduleScope.Grade => 1,
-            _ => 2
-        };
-    }
-
-    private static string MealScheduleScopeLabel(MealScheduleScope scope)
-    {
-        return scope switch
-        {
-            MealScheduleScope.All => "全体",
-            MealScheduleScope.Grade => "学年",
-            _ => "個人"
-        };
+        return MealStatusCalculator.GetReason(
+            person,
+            date,
+            _data.MealRecords,
+            _data.MealScheduleChanges,
+            _data.NoMealDates);
     }
 
     private static string JapaneseDayOfWeek(DayOfWeek dayOfWeek)
@@ -1736,19 +1639,43 @@ public sealed class MainForm : Form
 
     private void ManageMealSchedule()
     {
-        using var dialog = new MealScheduleManagerForm(
-            _data.MealScheduleChanges,
-            _data.People);
-        if (dialog.ShowDialog(this) != DialogResult.OK)
+        if (_mealScheduleManagerForm is { IsDisposed: false })
         {
+            _mealScheduleManagerForm.Activate();
             return;
         }
 
-        _data.MealScheduleChanges = dialog.Changes;
-        _repository.Save(_data);
-        RefreshDaily();
-        RefreshMonthly();
-        RefreshSummary();
+        var dialog = new MealScheduleManagerForm(
+            _data.MealScheduleChanges,
+            _data.People);
+        _mealScheduleManagerForm = dialog;
+        dialog.ChangesSaved += (_, _) =>
+        {
+            _data.MealScheduleChanges = dialog.Changes
+                .Select(CloneMealScheduleChange)
+                .ToList();
+            _repository.Save(_data);
+            RefreshDaily();
+            RefreshMonthly();
+            RefreshSummary();
+        };
+        dialog.FormClosed += (_, _) => _mealScheduleManagerForm = null;
+        dialog.Show(this);
+    }
+
+    private static MealScheduleChange CloneMealScheduleChange(MealScheduleChange change)
+    {
+        return new MealScheduleChange
+        {
+            Id = change.Id,
+            EffectiveDate = change.EffectiveDate,
+            EndDate = change.EndDate,
+            Scope = change.Scope,
+            Grade = change.Grade,
+            PersonId = change.PersonId,
+            Action = change.Action,
+            Reason = change.Reason
+        };
     }
 
     private async void ImportCabinetOfficeHolidays()
