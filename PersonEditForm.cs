@@ -44,6 +44,7 @@ public sealed class PersonEditForm : Form
         Height = 640;
         MinimumSize = new Size(600, 600);
         StartPosition = FormStartPosition.CenterParent;
+        ControlBox = false;
         FormBorderStyle = FormBorderStyle.Sizable;
 
         Controls.Add(CreateLayout());

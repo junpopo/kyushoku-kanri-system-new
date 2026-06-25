@@ -16,6 +16,7 @@ public sealed class LoginForm : Form
         Width = 380;
         Height = 245;
         StartPosition = FormStartPosition.CenterScreen;
+        ControlBox = false;
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;

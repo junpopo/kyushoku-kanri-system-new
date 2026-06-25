@@ -46,6 +46,7 @@ public sealed class DeliveryPlaceBasicCountForm : Form
         Height = 540;
         MinimumSize = new Size(900, 420);
         StartPosition = FormStartPosition.CenterParent;
+        ControlBox = false;
         FormBorderStyle = FormBorderStyle.Sizable;
         MaximizeBox = true;
         MinimizeBox = false;

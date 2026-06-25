@@ -21,6 +21,7 @@ public sealed class PersonMonthlyMealMatrixForm : Form
         Height = 350;
         MinimumSize = new Size(1000, 320);
         StartPosition = FormStartPosition.CenterParent;
+        ControlBox = false;
 
         Controls.Add(CreateLayout());
         BuildMatrix();

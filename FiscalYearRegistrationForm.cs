@@ -12,6 +12,7 @@ public sealed class FiscalYearRegistrationForm : Form
         Text = "年度登録";
         ClientSize = new Size(300, 135);
         StartPosition = FormStartPosition.CenterParent;
+        ControlBox = false;
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;

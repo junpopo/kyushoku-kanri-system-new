@@ -13,6 +13,7 @@ public sealed class MealStatusDetailsForm : Form
         Height = 480;
         MinimumSize = new Size(700, 380);
         StartPosition = FormStartPosition.CenterParent;
+        ControlBox = false;
 
         var root = new TableLayoutPanel
         {

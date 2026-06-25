@@ -29,6 +29,7 @@ public sealed class DeliveryPlaceHistoryForm : Form
         Width = 620;
         Height = 500;
         StartPosition = FormStartPosition.CenterParent;
+        ControlBox = false;
         FormBorderStyle = FormBorderStyle.Sizable;
 
         _deliveryPlace.DropDownStyle = ComboBoxStyle.DropDownList;

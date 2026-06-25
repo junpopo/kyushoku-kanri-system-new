@@ -54,6 +54,7 @@ public sealed class MainForm : Form
         Height = 820;
         MinimumSize = new Size(1320, 700);
         StartPosition = FormStartPosition.CenterScreen;
+        ControlBox = false;
 
         Controls.Add(CreateLayout());
         RefreshPeople();
@@ -229,6 +230,7 @@ public sealed class MainForm : Form
         buttons.Controls.Add(CreateButton("配膳場所管理", ManageDeliveryPlaces, requiresAdmin: true));
         buttons.Controls.Add(CreateButton("配膳別基本数", ManageDeliveryPlaceBasicCounts, requiresAdmin: true));
         buttons.Controls.Add(CreateButton("年度登録", RegisterFiscalYear, requiresAdmin: true));
+        buttons.Controls.Add(CreateButton("終了", Close));
 
         ConfigurePeopleGrid();
         panel.Controls.Add(buttons, 0, 0);

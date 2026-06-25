@@ -22,6 +22,7 @@ public sealed class DeliveryPlaceManagerForm : Form
         Width = 460;
         Height = 440;
         StartPosition = FormStartPosition.CenterParent;
+        ControlBox = false;
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
