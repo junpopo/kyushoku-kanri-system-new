@@ -4,6 +4,9 @@ namespace KyushokuKanriSystem;
 
 public static class GridPrintHelper
 {
+    private const float MinimumRowHeight = 22f;
+    private const float CellPadding = 3f;
+
     public static void ShowPreview(
         IWin32Window owner,
         string title,
@@ -27,6 +30,37 @@ public static class GridPrintHelper
             DocumentName = title
         };
         document.DefaultPageSettings.Landscape = true;
+        using (var pageSetup = new PageSetupDialog
+               {
+                   Document = document,
+                   AllowMargins = true,
+                   AllowOrientation = true,
+                   AllowPaper = true,
+                   AllowPrinter = true
+               })
+        {
+            if (pageSetup.ShowDialog(owner) != DialogResult.OK)
+            {
+                return;
+            }
+        }
+
+        using (var printDialog = new PrintDialog
+               {
+                   Document = document,
+                   AllowCurrentPage = false,
+                   AllowPrintToFile = true,
+                   AllowSelection = false,
+                   AllowSomePages = false,
+                   UseEXDialog = true
+               })
+        {
+            if (printDialog.ShowDialog(owner) != DialogResult.OK)
+            {
+                return;
+            }
+        }
+
         document.BeginPrint += (_, _) => state.Reset();
         document.PrintPage += (_, eventArgs) =>
         {
@@ -45,7 +79,7 @@ public static class GridPrintHelper
             using var textBrush = new SolidBrush(Color.Black);
 
             var bounds = eventArgs.MarginBounds;
-            var y = bounds.Top;
+            var y = (float)bounds.Top;
             var graphics = eventArgs.Graphics;
             graphics.DrawString(title, titleFont, textBrush, bounds.Left, y);
             y += titleFont.Height + 4;
@@ -61,12 +95,17 @@ public static class GridPrintHelper
             DrawRow(graphics, columns.Select(column => column.HeaderText).ToArray(), widths, bounds.Left, y, headerHeight, headerFont, textBrush, headerBrush, pen);
             y += headerHeight;
 
-            var rowHeight = 22;
-            while (state.RowIndex < rows.Count && y + rowHeight <= bounds.Bottom)
+            while (state.RowIndex < rows.Count)
             {
                 var values = columns
                     .Select(column => Convert.ToString(rows[state.RowIndex].Cells[column.Index].FormattedValue) ?? "")
                     .ToArray();
+                var rowHeight = MeasureRowHeight(graphics, values, widths, cellFont);
+                if (y + rowHeight > bounds.Bottom && y > bounds.Top + headerHeight + titleFont.Height)
+                {
+                    break;
+                }
+
                 DrawRow(graphics, values, widths, bounds.Left, y, rowHeight, cellFont, textBrush, Brushes.White, pen);
                 y += rowHeight;
                 state.RowIndex++;
@@ -83,7 +122,18 @@ public static class GridPrintHelper
             StartPosition = FormStartPosition.CenterParent,
             UseAntiAlias = true
         };
-        preview.ShowDialog(owner);
+        try
+        {
+            preview.ShowDialog(owner);
+        }
+        catch (Exception exception) when (exception is InvalidPrinterException or ObjectDisposedException)
+        {
+            MessageBox.Show(
+                $"印刷プレビューを表示できませんでした。\nプリンター設定を確認してください。\n\n{exception.Message}",
+                title,
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning);
+        }
     }
 
     private static void DrawRow(
@@ -102,8 +152,7 @@ public static class GridPrintHelper
         {
             Alignment = StringAlignment.Near,
             LineAlignment = StringAlignment.Center,
-            Trimming = StringTrimming.EllipsisCharacter,
-            FormatFlags = StringFormatFlags.NoWrap
+            Trimming = StringTrimming.Word
         };
 
         for (var index = 0; index < values.Count; index++)
@@ -115,6 +164,27 @@ public static class GridPrintHelper
             graphics.DrawString(values[index], font, textBrush, rectangle, format);
             x += widths[index];
         }
+    }
+
+    private static float MeasureRowHeight(
+        Graphics graphics,
+        IReadOnlyList<string> values,
+        IReadOnlyList<float> widths,
+        Font font)
+    {
+        var height = MinimumRowHeight;
+        using var format = new StringFormat
+        {
+            Trimming = StringTrimming.Word
+        };
+        for (var index = 0; index < values.Count; index++)
+        {
+            var width = Math.Max(10, widths[index] - CellPadding * 2);
+            var measured = graphics.MeasureString(values[index], font, new SizeF(width, 500), format);
+            height = Math.Max(height, measured.Height + CellPadding * 2);
+        }
+
+        return Math.Min(height, 120);
     }
 
     private sealed class PrintState
@@ -144,7 +214,11 @@ public static class GridPrintHelper
         public List<float> ColumnWidths(float pageWidth)
         {
             var rawWidths = Columns
-                .Select(column => Math.Max(30, column.Width))
+                .Select(column =>
+                    column.HeaderText.Contains("理由", StringComparison.CurrentCultureIgnoreCase) ||
+                    column.DataPropertyName.Contains("Reason", StringComparison.OrdinalIgnoreCase)
+                        ? Math.Max(160, column.Width)
+                        : Math.Max(30, column.Width))
                 .ToList();
             var total = rawWidths.Sum();
             if (total <= 0)

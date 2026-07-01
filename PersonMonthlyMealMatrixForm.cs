@@ -201,9 +201,11 @@ public sealed class PersonMonthlyMealMatrixForm : Form
             return "外";
         }
 
-        if (_noMealDateProvider(date))
+        if (_noMealDateProvider(date) ||
+            date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday ||
+            !_person.EatsOn(date.DayOfWeek))
         {
-            return "-";
+            return "－";
         }
 
         var status = _mealStatusProvider(date);
