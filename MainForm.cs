@@ -51,9 +51,9 @@ public sealed class MainForm : Form
         Text = _currentUser is null
             ? "給食管理システム"
             : $"給食管理システム - {_currentUser.DisplayName}{(_isReadOnly ? "（閲覧のみ）" : "（管理者）")}";
-        Width = 1420;
+        Width = 1550;
         Height = 820;
-        MinimumSize = new Size(1320, 700);
+        MinimumSize = new Size(1480, 700);
         StartPosition = FormStartPosition.CenterScreen;
         ControlBox = false;
 
