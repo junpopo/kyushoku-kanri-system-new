@@ -638,10 +638,11 @@ public sealed class MainForm : Form
 
         RefreshMonthlyMatrix(month);
 
-        var served = _monthlyAllRows.Sum(row => row.Served);
-        var milk = _monthlyAllRows.Sum(row => row.Milk);
-        var allergy = _monthlyAllRows.Sum(row => row.AllergySupport);
-        _monthlyTotalLabel.Text = $"月合計  提供: {served} / 牛乳: {milk} / アレルギー対応: {allergy}";
+        var served = CountMonthlyMeals(month, person => person.Type != PersonType.Tasting);
+        var milk = CountMonthlyMeals(month, person =>
+            person.Type != PersonType.Tasting && person.HasMilk);
+        var allergy = CountMonthlyMeals(month, person => person.HasAllergySupport);
+        _monthlyTotalLabel.Text = $"月合計  給食合計: {served} / 牛乳数: {milk} / アレルギー対応: {allergy}";
     }
 
     private void ChangeMealMonth()
@@ -1059,6 +1060,14 @@ public sealed class MainForm : Form
             predicate(person) &&
             IsActive(person, date) &&
             GetMealStatus(person, date) == MealStatus.Serve);
+    }
+
+    private int CountMonthlyMeals(DateTime month, Func<Person, bool> predicate)
+    {
+        var daysInMonth = DateTime.DaysInMonth(month.Year, month.Month);
+        return Enumerable.Range(1, daysInMonth)
+            .Select(day => new DateTime(month.Year, month.Month, day))
+            .Sum(date => CountMeals(date, predicate));
     }
 
     private int? GetDeliveryPlaceBasicCount(
