@@ -6,6 +6,7 @@ public sealed class PersonMonthlyMealMatrixForm : Form
     private readonly Person _person;
     private readonly Func<DateTime, MealStatus> _mealStatusProvider;
     private readonly Func<DateTime, string> _mealReasonProvider;
+    private readonly Func<DateTime, bool> _noMealDateProvider;
     private readonly DataGridView _grid = new();
     private readonly Label _reasonLabel = new();
 
@@ -13,12 +14,14 @@ public sealed class PersonMonthlyMealMatrixForm : Form
         DateTime month,
         Person person,
         Func<DateTime, MealStatus> mealStatusProvider,
-        Func<DateTime, string> mealReasonProvider)
+        Func<DateTime, string> mealReasonProvider,
+        Func<DateTime, bool>? noMealDateProvider = null)
     {
         _month = new DateTime(month.Year, month.Month, 1);
         _person = person;
         _mealStatusProvider = mealStatusProvider;
         _mealReasonProvider = mealReasonProvider;
+        _noMealDateProvider = noMealDateProvider ?? (_ => false);
 
         Text = "月間喫食状況";
         Width = 1320;
@@ -129,12 +132,19 @@ public sealed class PersonMonthlyMealMatrixForm : Form
         for (var day = 1; day <= daysInMonth; day++)
         {
             var date = new DateTime(_month.Year, _month.Month, day);
-            _grid.Columns.Add(new DataGridViewTextBoxColumn
+            var column = new DataGridViewTextBoxColumn
             {
                 HeaderText = $"{day}\n{DayLabel(date.DayOfWeek)}",
                 Width = 35,
                 SortMode = DataGridViewColumnSortMode.NotSortable
-            });
+            };
+            if (_noMealDateProvider(date))
+            {
+                column.HeaderCell.Style.ForeColor = Color.Firebrick;
+                column.HeaderCell.Style.Font = new Font(_grid.Font, FontStyle.Bold);
+            }
+
+            _grid.Columns.Add(column);
         }
 
         var mealValues = new object[daysInMonth + 1];
@@ -172,6 +182,11 @@ public sealed class PersonMonthlyMealMatrixForm : Form
         if (!IsActive(date))
         {
             return "外";
+        }
+
+        if (_noMealDateProvider(date))
+        {
+            return "-";
         }
 
         var status = _mealStatusProvider(date);
@@ -307,6 +322,11 @@ public sealed class PersonMonthlyMealMatrixForm : Form
 
     private string StatusReason(DateTime date, string label)
     {
+        if (_noMealDateProvider(date))
+        {
+            return _mealReasonProvider(date);
+        }
+
         return label is "✕" or "欠"
             ? _mealReasonProvider(date)
             : "";

@@ -8,6 +8,7 @@ public sealed class IndividualAnnualMealCountForm : Form
     private readonly IReadOnlyCollection<Person> _people;
     private readonly Func<Person, DateTime, MealStatus> _mealStatusProvider;
     private readonly Func<Person, DateTime, string> _mealReasonProvider;
+    private readonly Func<DateTime, bool> _noMealDateProvider;
     private readonly BindingList<PersonAnnualMealRow> _rows = [];
     private readonly DataGridView _grid = new();
     private readonly ComboBox _typeFilter = new();
@@ -22,12 +23,14 @@ public sealed class IndividualAnnualMealCountForm : Form
         int fiscalYear,
         IReadOnlyCollection<Person> people,
         Func<Person, DateTime, MealStatus> mealStatusProvider,
-        Func<Person, DateTime, string> mealReasonProvider)
+        Func<Person, DateTime, string> mealReasonProvider,
+        Func<DateTime, bool> noMealDateProvider)
     {
         _fiscalYear = fiscalYear;
         _people = people;
         _mealStatusProvider = mealStatusProvider;
         _mealReasonProvider = mealReasonProvider;
+        _noMealDateProvider = noMealDateProvider;
 
         Text = "個人別年間喫食数";
         Width = 1420;
@@ -365,7 +368,8 @@ public sealed class IndividualAnnualMealCountForm : Form
             month,
             _rows.Select(row => row.Person).ToList(),
             _mealStatusProvider,
-            _mealReasonProvider);
+            _mealReasonProvider,
+            _noMealDateProvider);
         dialog.Show(this);
     }
 
@@ -375,7 +379,8 @@ public sealed class IndividualAnnualMealCountForm : Form
             month,
             row.Person,
             date => _mealStatusProvider(row.Person, date),
-            date => _mealReasonProvider(row.Person, date));
+            date => _mealReasonProvider(row.Person, date),
+            _noMealDateProvider);
         dialog.Show(this);
     }
 

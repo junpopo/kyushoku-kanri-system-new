@@ -6,18 +6,21 @@ public sealed class SearchResultMonthlyMealMatrixForm : Form
     private readonly IReadOnlyCollection<Person> _people;
     private readonly Func<Person, DateTime, MealStatus> _mealStatusProvider;
     private readonly Func<Person, DateTime, string> _mealReasonProvider;
+    private readonly Func<DateTime, bool> _noMealDateProvider;
     private readonly DataGridView _grid = new();
 
     public SearchResultMonthlyMealMatrixForm(
         DateTime month,
         IReadOnlyCollection<Person> people,
         Func<Person, DateTime, MealStatus> mealStatusProvider,
-        Func<Person, DateTime, string> mealReasonProvider)
+        Func<Person, DateTime, string> mealReasonProvider,
+        Func<DateTime, bool> noMealDateProvider)
     {
         _month = new DateTime(month.Year, month.Month, 1);
         _people = people;
         _mealStatusProvider = mealStatusProvider;
         _mealReasonProvider = mealReasonProvider;
+        _noMealDateProvider = noMealDateProvider;
 
         Text = "検索結果 月間喫食状況";
         Width = 1420;
@@ -114,13 +117,20 @@ public sealed class SearchResultMonthlyMealMatrixForm : Form
         for (var day = 1; day <= daysInMonth; day++)
         {
             var date = new DateTime(_month.Year, _month.Month, day);
-            _grid.Columns.Add(new DataGridViewTextBoxColumn
+            var column = new DataGridViewTextBoxColumn
             {
                 HeaderText = $"{day}\n{DayLabel(date.DayOfWeek)}",
                 Width = 34,
                 SortMode = DataGridViewColumnSortMode.NotSortable,
                 Tag = date
-            });
+            };
+            if (_noMealDateProvider(date))
+            {
+                column.HeaderCell.Style.ForeColor = Color.Firebrick;
+                column.HeaderCell.Style.Font = new Font(_grid.Font, FontStyle.Bold);
+            }
+
+            _grid.Columns.Add(column);
         }
 
         foreach (var person in _people)
@@ -153,7 +163,8 @@ public sealed class SearchResultMonthlyMealMatrixForm : Form
             return "外";
         }
 
-        if (date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
+        if (_noMealDateProvider(date) ||
+            date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
         {
             return "－";
         }
@@ -177,6 +188,11 @@ public sealed class SearchResultMonthlyMealMatrixForm : Form
         var reason = label is "✕" or "欠"
             ? _mealReasonProvider(person, date)
             : "";
+        if (_noMealDateProvider(date))
+        {
+            reason = _mealReasonProvider(person, date);
+        }
+
         cell.ToolTipText = $"{date:yyyy年M月d日}: {StatusText(label)}" +
                            (reason.Length > 0 ? $"　理由: {reason}" : "");
         switch (label)

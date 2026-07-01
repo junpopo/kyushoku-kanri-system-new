@@ -600,7 +600,8 @@ public sealed class MainForm : Form
 
         for (var date = month; date <= lastDate; date = date.AddDays(1))
         {
-            if (date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
+            if (date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday ||
+                FindNoMealDate(date) is not null)
             {
                 continue;
             }
@@ -1190,7 +1191,8 @@ public sealed class MainForm : Form
 
     private int CountMealStoppedPeople(DateTime date)
     {
-        if (date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
+        if (date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday ||
+            FindNoMealDate(date) is not null)
         {
             return 0;
         }
@@ -1202,7 +1204,9 @@ public sealed class MainForm : Form
 
     private void ShowMealStoppedPeopleDetails(DateTime date)
     {
-        List<MealStatusDetail> details = date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday
+        List<MealStatusDetail> details =
+            date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday ||
+            FindNoMealDate(date) is not null
             ? []
             : _data.People
                 .Where(person =>
@@ -1796,7 +1800,8 @@ public sealed class MainForm : Form
             _registeredFiscalYear,
             _data.People,
             GetMealStatus,
-            GetMealStatusReason);
+            GetMealStatusReason,
+            date => FindNoMealDate(date) is not null);
         dialog.Show(this);
     }
 
