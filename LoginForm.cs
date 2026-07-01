@@ -22,7 +22,7 @@ public sealed class LoginForm : Form
         MinimizeBox = false;
 
         Controls.Add(CreateLayout());
-        Shown += (_, _) => _loginId.Focus();
+        Shown += (_, _) => FocusInitialInput();
     }
 
     private Control CreateLayout()
@@ -63,7 +63,7 @@ public sealed class LoginForm : Form
         _loginType.Dock = DockStyle.Fill;
         _loginType.DropDownStyle = ComboBoxStyle.DropDownList;
         _loginType.Items.AddRange(["管理者", "一般利用者（閲覧のみ）"]);
-        _loginType.SelectedIndex = 0;
+        _loginType.SelectedIndex = 1;
         _message.ForeColor = Color.Firebrick;
         _message.AutoSize = true;
 
@@ -155,6 +155,17 @@ public sealed class LoginForm : Form
         LoggedInUser = user;
         DialogResult = DialogResult.OK;
         Close();
+    }
+
+    private void FocusInitialInput()
+    {
+        if (_loginId.Visible)
+        {
+            _loginId.Focus();
+            return;
+        }
+
+        _loginType.Focus();
     }
 
     private void UpdateCredentialFields(TableLayoutPanel fields, TableLayoutPanel root)
