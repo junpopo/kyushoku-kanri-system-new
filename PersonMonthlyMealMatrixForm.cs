@@ -58,7 +58,7 @@ public sealed class PersonMonthlyMealMatrixForm : Form
         };
         var legend = new Label
         {
-            Text = "給食: ○ 喫食　牛乳: ○ あり／無 なし　✕ 停止　－ 非喫食日　外 在籍期間外",
+            Text = "給食: ○：喫食　牛乳: ○：あり／無：なし　✕：停止　－：非喫食日　外：在籍期間外",
             AutoSize = true,
             ForeColor = Color.FromArgb(55, 65, 75),
             Margin = new Padding(0, 0, 0, 8)

@@ -56,7 +56,7 @@ public sealed class SearchResultMonthlyMealMatrixForm : Form
         };
         var legend = new Label
         {
-            Text = "○ 喫食　✕ 停止　－ 土日・非喫食日　外 在籍期間外",
+            Text = "○：喫食　✕：停止　－：土日・非喫食日　外：在籍期間外",
             AutoSize = true,
             ForeColor = Color.FromArgb(55, 65, 75),
             Margin = new Padding(0, 0, 0, 8)
