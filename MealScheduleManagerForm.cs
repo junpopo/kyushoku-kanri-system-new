@@ -36,6 +36,7 @@ public sealed class MealScheduleManagerForm : Form
         Controls.Add(CreateLayout());
         ConfigureInputs();
         RefreshRows();
+        Shown += (_, _) => ClearGridSelection();
     }
 
     private Control CreateLayout()
@@ -321,6 +322,8 @@ public sealed class MealScheduleManagerForm : Form
 
         if (selectedId is null)
         {
+            ClearGridSelection();
+            BeginInvoke(ClearGridSelection);
             return;
         }
 
@@ -333,6 +336,12 @@ public sealed class MealScheduleManagerForm : Form
                 break;
             }
         }
+    }
+
+    private void ClearGridSelection()
+    {
+        _grid.ClearSelection();
+        _grid.CurrentCell = null;
     }
 
     private void LoadSelected()
