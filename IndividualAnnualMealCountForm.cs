@@ -93,6 +93,8 @@ public sealed class IndividualAnnualMealCountForm : Form
         search.Controls.Add(CreateButton("検索", RefreshRows));
         search.Controls.Add(CreateButton("条件クリア", ClearFilters));
 
+        search.Controls.Add(CreateButton("印刷", PrintGrid));
+
         ConfigureGrid();
 
         var bottom = new TableLayoutPanel
@@ -393,6 +395,15 @@ public sealed class IndividualAnnualMealCountForm : Form
         _personFilter.SelectedIndex = 0;
         _keywordFilter.Clear();
         RefreshRows();
+    }
+
+    private void PrintGrid()
+    {
+        GridPrintHelper.ShowPreview(
+            this,
+            Text,
+            _grid,
+            $"{_fiscalYear}年度  検索結果: {_rows.Count}人");
     }
 
     private bool MatchesType(Person person)

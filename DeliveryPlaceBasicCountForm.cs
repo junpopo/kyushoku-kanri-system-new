@@ -84,6 +84,8 @@ public sealed class DeliveryPlaceBasicCountForm : Form
         tools.Controls.Add(CreateButton("4月名簿から12か月作成", CreateForecastFromAprilRoster));
         tools.Controls.Add(CreateButton("名簿の組み合わせを追加", AddMissingDeliveryPlaces));
 
+        tools.Controls.Add(CreateButton("印刷", PrintGrid));
+
         ConfigureGrid();
 
         var closeButtons = new FlowLayoutPanel
@@ -210,6 +212,15 @@ public sealed class DeliveryPlaceBasicCountForm : Form
         };
         button.Click += (_, _) => action();
         return button;
+    }
+
+    private void PrintGrid()
+    {
+        GridPrintHelper.ShowPreview(
+            this,
+            Text,
+            _grid,
+            $"{_loadedFiscalYear}年度");
     }
 
     private void LoadFiscalYear(int fiscalYear)

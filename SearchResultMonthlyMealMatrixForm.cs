@@ -78,6 +78,14 @@ public sealed class SearchResultMonthlyMealMatrixForm : Form
             Padding = new Padding(16, 5, 16, 5)
         };
         close.Click += (_, _) => Close();
+        var print = new Button
+        {
+            Text = "印刷",
+            AutoSize = true,
+            Padding = new Padding(16, 5, 16, 5)
+        };
+        print.Click += (_, _) => PrintGrid();
+        closePanel.Controls.Add(print);
         closePanel.Controls.Add(close);
 
         root.Controls.Add(title, 0, 0);
@@ -103,6 +111,15 @@ public sealed class SearchResultMonthlyMealMatrixForm : Form
         _grid.RowTemplate.Height = 28;
         _grid.BackgroundColor = Color.White;
         _grid.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+    }
+
+    private void PrintGrid()
+    {
+        GridPrintHelper.ShowPreview(
+            this,
+            Text,
+            _grid,
+            $"{_month:yyyy年M月}  検索結果: {_people.Count}人");
     }
 
     private void BuildMatrix()

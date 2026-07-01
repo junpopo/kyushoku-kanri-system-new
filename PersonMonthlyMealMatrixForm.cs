@@ -84,6 +84,14 @@ public sealed class PersonMonthlyMealMatrixForm : Form
             Padding = new Padding(16, 5, 16, 5)
         };
         close.Click += (_, _) => Close();
+        var print = new Button
+        {
+            Text = "印刷",
+            AutoSize = true,
+            Padding = new Padding(16, 5, 16, 5)
+        };
+        print.Click += (_, _) => PrintGrid();
+        closePanel.Controls.Add(print);
         closePanel.Controls.Add(close);
         AcceptButton = close;
         CancelButton = close;
@@ -114,6 +122,15 @@ public sealed class PersonMonthlyMealMatrixForm : Form
         _grid.CellClick += (_, eventArgs) => ShowCellReason(
             eventArgs.RowIndex,
             eventArgs.ColumnIndex);
+    }
+
+    private void PrintGrid()
+    {
+        GridPrintHelper.ShowPreview(
+            this,
+            Text,
+            _grid,
+            $"{_month:yyyy年M月}  {_person.TypeLabel}  {_person.FullName}");
     }
 
     private void BuildMatrix()

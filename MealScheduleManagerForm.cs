@@ -15,6 +15,7 @@ public sealed class MealScheduleManagerForm : Form
     private readonly ComboBox _person = new();
     private readonly ComboBox _action = new();
     private readonly TextBox _reason = new();
+    private readonly TextBox _searchText = new();
 
     public List<MealScheduleChange> Changes { get; private set; }
     public event EventHandler? ChangesSaved;
@@ -45,17 +46,19 @@ public sealed class MealScheduleManagerForm : Form
         {
             Dock = DockStyle.Fill,
             ColumnCount = 1,
-            RowCount = 4,
+            RowCount = 5,
             Padding = new Padding(16)
         };
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
         ConfigureGrid();
-        root.Controls.Add(_grid, 0, 0);
-        root.Controls.Add(CreateEditArea(), 0, 1);
+        root.Controls.Add(CreateSearchArea(), 0, 0);
+        root.Controls.Add(_grid, 0, 1);
+        root.Controls.Add(CreateEditArea(), 0, 2);
 
         var editButtons = new FlowLayoutPanel
         {
@@ -66,7 +69,7 @@ public sealed class MealScheduleManagerForm : Form
         editButtons.Controls.Add(CreateButton("追加", AddChange));
         editButtons.Controls.Add(CreateButton("修正", UpdateChange));
         editButtons.Controls.Add(CreateButton("削除", DeleteChange));
-        root.Controls.Add(editButtons, 0, 2);
+        root.Controls.Add(editButtons, 0, 3);
 
         var closeButtons = new FlowLayoutPanel
         {
@@ -91,8 +94,39 @@ public sealed class MealScheduleManagerForm : Form
         closeButtons.Controls.Add(save);
         closeButtons.Controls.Add(close);
         AcceptButton = save;
-        root.Controls.Add(closeButtons, 0, 3);
+        root.Controls.Add(closeButtons, 0, 4);
         return root;
+    }
+
+    private Control CreateSearchArea()
+    {
+        var panel = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            AutoSize = true,
+            WrapContents = false
+        };
+        panel.Controls.Add(new Label
+        {
+            Text = "検索",
+            AutoSize = true,
+            Padding = new Padding(0, 14, 4, 0)
+        });
+        _searchText.Width = 260;
+        _searchText.Margin = new Padding(0, 8, 8, 8);
+        _searchText.KeyDown += (_, eventArgs) =>
+        {
+            if (eventArgs.KeyCode == Keys.Enter)
+            {
+                RefreshRows();
+                eventArgs.SuppressKeyPress = true;
+            }
+        };
+        panel.Controls.Add(_searchText);
+        panel.Controls.Add(CreateButton("検索", () => RefreshRows()));
+        panel.Controls.Add(CreateButton("条件クリア", ClearSearch));
+        panel.Controls.Add(CreateButton("印刷", PrintGrid));
+        return panel;
     }
 
     private void ConfigureGrid()
@@ -260,6 +294,23 @@ public sealed class MealScheduleManagerForm : Form
         RefreshRows();
     }
 
+    private void ClearSearch()
+    {
+        _searchText.Clear();
+        RefreshRows();
+    }
+
+    private void PrintGrid()
+    {
+        GridPrintHelper.ShowPreview(
+            this,
+            Text,
+            _grid,
+            string.IsNullOrWhiteSpace(_searchText.Text)
+                ? null
+                : $"検索: {_searchText.Text.Trim()}");
+    }
+
     private bool TryBuildChange(out MealScheduleChange change)
     {
         change = new MealScheduleChange
@@ -304,9 +355,11 @@ public sealed class MealScheduleManagerForm : Form
     private void RefreshRows(Guid? selectedId = null)
     {
         _rows.Clear();
+        var keyword = NormalizeSearchText(_searchText.Text);
         foreach (var change in Changes
             .OrderBy(change => change.EffectiveDate)
-            .ThenBy(change => ScopePriority(change.Scope)))
+            .ThenBy(change => ScopePriority(change.Scope))
+            .Where(change => MatchesSearch(change, keyword)))
         {
             _rows.Add(new ScheduleRow
             {
@@ -336,6 +389,20 @@ public sealed class MealScheduleManagerForm : Form
                 break;
             }
         }
+    }
+
+    private bool MatchesSearch(MealScheduleChange change, string keyword)
+    {
+        if (keyword.Length == 0)
+        {
+            return true;
+        }
+
+        var target = NormalizeSearchText(
+            $"{change.EffectiveDate:d}{EndDateLabel(change)}" +
+            $"{ScopeLabel(change.Scope)}{TargetLabel(change)}" +
+            $"{ActionLabel(change.Action)}{change.Reason}");
+        return target.Contains(keyword, StringComparison.CurrentCultureIgnoreCase);
     }
 
     private void ClearGridSelection()
@@ -547,6 +614,14 @@ public sealed class MealScheduleManagerForm : Form
     private static int SortNumber(string value)
     {
         return int.TryParse(value, out var number) ? number : int.MaxValue;
+    }
+
+    private static string NormalizeSearchText(string value)
+    {
+        return value
+            .Replace(" ", "", StringComparison.Ordinal)
+            .Replace("　", "", StringComparison.Ordinal)
+            .Trim();
     }
 
     private sealed record PersonOption(Guid Id, string Label);
