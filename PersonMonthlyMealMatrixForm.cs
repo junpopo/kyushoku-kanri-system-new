@@ -58,14 +58,14 @@ public sealed class PersonMonthlyMealMatrixForm : Form
         };
         var legend = new Label
         {
-            Text = "給食: ○ 喫食　牛乳: ○ あり／無 なし　✕ 停止　欠 欠席　－ 非喫食日　外 在籍期間外",
+            Text = "給食: ○ 喫食　牛乳: ○ あり／無 なし　✕ 停止　－ 非喫食日　外 在籍期間外",
             AutoSize = true,
             ForeColor = Color.FromArgb(55, 65, 75),
             Margin = new Padding(0, 0, 0, 8)
         };
 
         ConfigureGrid();
-        _reasonLabel.Text = "停止・欠席のセルをクリックすると理由を表示します。";
+        _reasonLabel.Text = "停止のセルをクリックすると理由を表示します。";
         _reasonLabel.AutoSize = true;
         _reasonLabel.ForeColor = Color.FromArgb(75, 65, 45);
         _reasonLabel.Padding = new Padding(4, 8, 4, 4);
@@ -194,7 +194,7 @@ public sealed class PersonMonthlyMealMatrixForm : Form
         {
             return status switch
             {
-                MealStatus.Absent => "欠",
+                MealStatus.Absent => "✕",
                 _ => "✕"
             };
         }
@@ -233,10 +233,6 @@ public sealed class PersonMonthlyMealMatrixForm : Form
             case "✕":
                 cell.Style.BackColor = Color.FromArgb(255, 235, 200);
                 cell.Style.ForeColor = Color.FromArgb(145, 78, 0);
-                break;
-            case "欠":
-                cell.Style.BackColor = Color.FromArgb(255, 218, 218);
-                cell.Style.ForeColor = Color.FromArgb(155, 35, 35);
                 break;
             default:
                 cell.Style.BackColor = date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday
@@ -327,7 +323,7 @@ public sealed class PersonMonthlyMealMatrixForm : Form
             return _mealReasonProvider(date);
         }
 
-        return label is "✕" or "欠"
+        return label is "✕"
             ? _mealReasonProvider(date)
             : "";
     }
@@ -345,7 +341,6 @@ public sealed class PersonMonthlyMealMatrixForm : Form
             "○" => item == "牛乳" ? "あり" : "喫食",
             "無" => "なし",
             "✕" => "停止",
-            "欠" => "欠席",
             "外" => "在籍期間外",
             _ => "非喫食日"
         };

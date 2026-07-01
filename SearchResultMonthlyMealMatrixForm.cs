@@ -56,7 +56,7 @@ public sealed class SearchResultMonthlyMealMatrixForm : Form
         };
         var legend = new Label
         {
-            Text = "○ 喫食　✕ 停止　欠 欠席　－ 土日・非喫食日　外 在籍期間外",
+            Text = "○ 喫食　✕ 停止　－ 土日・非喫食日　外 在籍期間外",
             AutoSize = true,
             ForeColor = Color.FromArgb(55, 65, 75),
             Margin = new Padding(0, 0, 0, 8)
@@ -173,7 +173,7 @@ public sealed class SearchResultMonthlyMealMatrixForm : Form
         return status switch
         {
             MealStatus.Serve => "○",
-            MealStatus.Absent => "欠",
+            MealStatus.Absent => "✕",
             _ when !person.EatsOn(date.DayOfWeek) => "－",
             _ => "✕"
         };
@@ -185,7 +185,7 @@ public sealed class SearchResultMonthlyMealMatrixForm : Form
         DateTime date)
     {
         var label = Convert.ToString(cell.Value) ?? "";
-        var reason = label is "✕" or "欠"
+        var reason = label is "✕"
             ? _mealReasonProvider(person, date)
             : "";
         if (_noMealDateProvider(date))
@@ -204,10 +204,6 @@ public sealed class SearchResultMonthlyMealMatrixForm : Form
             case "✕":
                 cell.Style.BackColor = Color.FromArgb(255, 235, 200);
                 cell.Style.ForeColor = Color.FromArgb(145, 78, 0);
-                break;
-            case "欠":
-                cell.Style.BackColor = Color.FromArgb(255, 218, 218);
-                cell.Style.ForeColor = Color.FromArgb(155, 35, 35);
                 break;
             default:
                 cell.Style.BackColor = Color.FromArgb(240, 240, 240);
@@ -239,7 +235,6 @@ public sealed class SearchResultMonthlyMealMatrixForm : Form
         {
             "○" => "喫食",
             "✕" => "停止",
-            "欠" => "欠席",
             "外" => "在籍期間外",
             _ => "非喫食日"
         };

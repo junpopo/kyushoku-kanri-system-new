@@ -443,7 +443,7 @@ public sealed class MainForm : Form
         {
             HeaderText = "状態",
             DataPropertyName = nameof(DailyMealRow.Status),
-            DataSource = new[] { "提供", "停止", "欠席" }
+            DataSource = new[] { "提供", "停止" }
         });
         _dailyGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "理由", DataPropertyName = nameof(DailyMealRow.Reason), Width = 220 });
         _dailyGrid.CellValueChanged += (_, _) => UpdateDailyTotal();
@@ -472,7 +472,7 @@ public sealed class MainForm : Form
         _monthlyGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "提供数", DataPropertyName = nameof(MonthlyMealRow.Served), FillWeight = 65 });
         _monthlyGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "牛乳数", DataPropertyName = nameof(MonthlyMealRow.Milk), FillWeight = 65 });
         _monthlyGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "アレルギー対応数", DataPropertyName = nameof(MonthlyMealRow.AllergySupport), FillWeight = 105 });
-        _monthlyGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "停止・欠席数", DataPropertyName = nameof(MonthlyMealRow.StoppedOrAbsent), FillWeight = 90 });
+        _monthlyGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "停止数", DataPropertyName = nameof(MonthlyMealRow.StoppedOrAbsent), FillWeight = 90 });
         _monthlyGrid.Columns.Add(new DataGridViewButtonColumn
         {
             HeaderText = "詳細",
@@ -2004,7 +2004,7 @@ public sealed class MainForm : Form
     {
         var served = _dailyRows.Count(r => r.IsServed || r.Status == "提供");
         var stopped = _dailyRows.Count - served;
-        _dailyTotalLabel.Text = $"提供数: {served} / 停止・欠席: {stopped} / 登録: {_dailyRows.Count}";
+        _dailyTotalLabel.Text = $"提供数: {served} / 停止: {stopped} / 登録: {_dailyRows.Count}";
     }
 
     private static MealStatus LabelToStatus(string label)
@@ -2012,7 +2012,6 @@ public sealed class MainForm : Form
         return label switch
         {
             "停止" => MealStatus.Stop,
-            "欠席" => MealStatus.Absent,
             _ => MealStatus.Serve
         };
     }
@@ -2022,7 +2021,7 @@ public sealed class MainForm : Form
         return status switch
         {
             MealStatus.Stop => "停止",
-            MealStatus.Absent => "欠席",
+            MealStatus.Absent => "停止",
             _ => "提供"
         };
     }
