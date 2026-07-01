@@ -190,7 +190,6 @@ public sealed class MainForm : Form
         _mealMonthInput.ValueChanged += (_, _) => ChangeMealMonth();
         top.Controls.Add(_mealMonthInput);
         top.Controls.Add(new Label { Text = "月", AutoSize = true, Padding = new Padding(2, 8, 4, 0) });
-        top.Controls.Add(CreateButton("更新", RefreshMonthly));
         top.Controls.Add(CreateButton("個人別年間喫食数", ShowIndividualAnnualMealCounts));
         top.Controls.Add(CreateButton("給食開始・停止・再開", ManageMealSchedule, requiresAdmin: true));
 

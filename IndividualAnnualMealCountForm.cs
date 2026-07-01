@@ -90,7 +90,6 @@ public sealed class IndividualAnnualMealCountForm : Form
         search.Controls.Add(CreateLabel("氏名・番号"));
         _keywordFilter.Width = 140;
         search.Controls.Add(_keywordFilter);
-        search.Controls.Add(CreateButton("検索", RefreshRows));
         search.Controls.Add(CreateButton("条件クリア", ClearFilters));
 
         search.Controls.Add(CreateButton("印刷", PrintGrid));
@@ -199,6 +198,7 @@ public sealed class IndividualAnnualMealCountForm : Form
                 eventArgs.SuppressKeyPress = true;
             }
         };
+        _keywordFilter.TextChanged += (_, _) => RefreshRows();
     }
 
     private void ConfigureGrid()
