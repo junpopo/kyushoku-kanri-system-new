@@ -45,7 +45,7 @@ public static class MealStatusCalculator
         var noMealDate = FindNoMealDate(date, noMealDates);
         if (noMealDate is not null)
         {
-            return $"給食なし（{noMealDate.Name}）";
+            return noMealDate.Name;
         }
 
         var record = records.FirstOrDefault(item =>
